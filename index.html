@@ -173,18 +173,14 @@ button{font:inherit;color:inherit}
   #sec-court.on{grid-template-rows:none;gap:16px}
   .top{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"id bank speed";gap:10px 28px}
   .sec{display:grid}
-  .cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+  .cols{grid-template-columns:minmax(340px,400px) minmax(0,1fr);gap:20px;align-items:start}
+  .rs{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  #sec-season{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  #sec-season>.panel:nth-child(3){grid-column:1/-1}
   .col{display:grid;gap:20px;align-content:start;min-width:0}
-  .col-c{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
 }
 @media (min-width:1280px){
   #app>*{max-width:1680px}
-  .cols{grid-template-columns:minmax(320px,380px) minmax(0,1fr) minmax(320px,380px)}
-  .col-c{grid-column:auto;grid-template-columns:minmax(0,1fr)}
-}
-@media (min-width:1500px){
-  .rs{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
-  #sec-club .list{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 }
 @media (prefers-reduced-motion: reduce){
   .bb,.fire-tag,.shoot.fire .ballsvg{animation:none}
@@ -242,14 +238,12 @@ button{font:inherit;color:inherit}
           </div>
           <div id="info"></div>
         </section>
-        <section class="sec" id="sec-legends" data-sec="legends"></section>
+        <section class="sec" id="sec-club" data-sec="club"></section>
       </div>
       <div class="col col-b">
         <section class="sec" id="sec-roster" data-sec="roster"></section>
-        <section class="sec" id="sec-club" data-sec="club"></section>
-      </div>
-      <div class="col col-c">
         <section class="sec" id="sec-season" data-sec="season"></section>
+        <section class="sec" id="sec-legends" data-sec="legends"></section>
       </div>
     </div>
   </main>
@@ -292,6 +286,7 @@ fr:{
   sonOf:['FILS DE','FILLE DE'],ringsTag:n=>`${n} BAGUE${n>1?'S':''}`,
   roster:'Effectif',scouting:'Détection',noProspect:'Plus aucun profil. Relance une détection.',reroll:c=>`Nouvelle détection ${c}`,
   facilities:'Installations',lvl:n=>`NIV ${n}`,max:'Max',
+  slotLock:n=>`${n} PLACE${n>1?'S':''} VERROUILLÉE${n>1?'S':''} · EXTENSION DE L'EFFECTIF`,u_slots:'Extension de l\'effectif',d_slots:l=>`Débloque une place d'effectif par niveau. Actuel : ${5+l}/10. Niveau ${l}/5.`,
   u_shoot:'Salle de tir',d_shoot:l=>`+1,5 pt par tir et par niveau. Actuel : +${fmt(1.5*l)}.`,
   u_coach:['Entraîneur','Entraîneuse'],d_coach:l=>`+12 % de production par niveau. Actuel : +${12*l} %.`,
   u_arena:'Arène',d_arena:l=>`Billetterie automatique. Actuel : ${fmt(l?3*Math.pow(l,1.25):0)} pts/s.`,
@@ -347,6 +342,7 @@ en:{
   sonOf:['SON OF','DAUGHTER OF'],ringsTag:n=>`${n} RING${n>1?'S':''}`,
   roster:'Roster',scouting:'Scouting',noProspect:'No prospects left. Scout again.',reroll:c=>`New scouting ${c}`,
   facilities:'Facilities',lvl:n=>`LVL ${n}`,max:'Max',
+  slotLock:n=>`${n} LOCKED SLOT${n>1?'S':''} · ROSTER EXPANSION`,u_slots:'Roster expansion',d_slots:l=>`Unlocks one roster slot per level. Current: ${5+l}/10. Level ${l}/5.`,
   u_shoot:'Shooting gym',d_shoot:l=>`+1.5 pt per shot and per level. Current: +${fmt(1.5*l)}.`,
   u_coach:'Coach',d_coach:l=>`+12% production per level. Current: +${12*l}%.`,
   u_arena:'Arena',d_arena:l=>`Automatic ticket sales. Current: ${fmt(l?3*Math.pow(l,1.25):0)} pts/s.`,
@@ -404,6 +400,7 @@ const LAST=['Marchetti','Okafor','Lemaire','Duval','Haddad','Novak','Sorel','Vid
 const TEAMS_M=['Vallombre Corbeaux','Port-Sable Marées','Haut-Brasier Forgerons','Lacombe Hérons','Mont-Cerf Rafales','Saint-Orme Bisons','Clairval Tonnerre'];
 const TEAMS_F=['Vallombre Corneilles','Port-Sable Marées','Haut-Brasier Forgeronnes','Lacombe Aigrettes','Mont-Cerf Rafales','Saint-Orme Panthères','Clairval Tempêtes'];
 const UPG=[
+  {id:'slots',base:1500,g:3.4,max:5},
   {id:'shoot',base:25,g:1.45},
   {id:'coach',base:80,g:1.5},
   {id:'arena',base:150,g:1.6},
@@ -415,7 +412,8 @@ const UPG=[
   {id:'fans',base:350,g:1.65,max:10},
   {id:'mascot',base:250,g:1.6,max:8}
 ];
-const UPG0=()=>({shoot:0,coach:0,arena:0,train:0,form:0,scout:0,agent:0,recr:0,fans:0,mascot:0});
+const UPG0=()=>({slots:0,shoot:0,coach:0,arena:0,train:0,form:0,scout:0,agent:0,recr:0,fans:0,mascot:0});
+const slotsMax=()=>Math.min(ROSTER_MAX,5+S.upg.slots);
 const hofOpen=()=>S.hofUnlocked||S.rings>=HOF_TITLES;
 const GOAT={t:100,l:100,p:1e11};
 
@@ -451,7 +449,7 @@ function genPlayer(o){
   p.peak=p.r;
   return p;
 }
-const startRoster=()=>[genPlayer({r:31,age:19}),genPlayer({r:29,age:21}),genPlayer({r:30,age:20})];
+const startRoster=()=>[genPlayer({r:31,age:19}),genPlayer({r:29,age:21}),genPlayer({r:30,age:20}),genPlayer({r:28,age:22}),genPlayer({r:30,age:23})];
 function genProspects(){
   const out=[], f=S.upg.form, n=3+S.upg.recr;
   for(let i=0;i<n;i++){
@@ -474,7 +472,7 @@ const upCost=u=>Math.round(u.base*Math.pow(u.g,S.upg[u.id]));
 const rerollCost=()=>Math.round(Math.max(20,C.pps*15)*(1+S.rerolls*0.5));
 
 /* ---------- économie : plus la note est haute, plus il marque ---------- */
-const DIFF=0.9;
+const DIFF=0.45;
 const pp=r=>DIFF*0.03*Math.pow(r/10,3);
 const legacy=()=>1+S.legends.length*0.1;
 const titleMult=()=>Math.pow(1.5,S.rings);
@@ -492,7 +490,7 @@ function gain(g){S.pts+=g;S.total+=g;}
 
 /* ---------- ligue ---------- */
 function newSeason(){
-  const L=Math.min(88,24+3.5*(S.eraSeason-1));
+  const L=Math.min(92,34+5*(S.eraSeason-1));
   const teams=[{name:S.name,w:0,l:0,pf:0,pa:0,ovr:0}];
   (S.fem?TEAMS_F:TEAMS_M).forEach(n=>teams.push({name:n,w:0,l:0,pf:0,pa:0,ovr:Math.round(L+rnd(-7,7))}));
   return {n:S.seasonN,phase:'reg',game:0,sched:shuffle([1,2,3,4,5,6,7,1,2,3,4,5,6,7]),teams,po:null,champ:null};
@@ -659,7 +657,7 @@ function load(){
   try{
     const j=localStorage.getItem(SAVE_KEY);
     if(j){const o=JSON.parse(j);
-      if(o&&o.v===2&&o.season&&o.roster){o.upg=Object.assign(UPG0(),o.upg);o.fem=!!o.fem;o.titlesAll=Math.max(o.titlesAll||0,o.rings||0);if(o.eraTitles!=null&&o.rings>o.eraTitles)o.rings=o.eraTitles;o.hofUnlocked=!!o.hofUnlocked||o.rings>=HOF_TITLES;o.pending=!!o.pending;return o;}}
+      if(o&&o.v===2&&o.season&&o.roster){o.upg=Object.assign(UPG0(),o.upg);if(o.upg&&o.upg.slots===undefined)o.upg.slots=5;o.fem=!!o.fem;o.titlesAll=Math.max(o.titlesAll||0,o.rings||0);if(o.eraTitles!=null&&o.rings>o.eraTitles)o.rings=o.eraTitles;o.hofUnlocked=!!o.hofUnlocked||o.rings>=HOF_TITLES;o.pending=!!o.pending;return o;}}
   }catch(e){}
   return null;
 }
@@ -723,7 +721,7 @@ function plRow(p,mode,i){
   let act;
   if(mode==='prospect'){
     const c=signCost(p);
-    act=`<button class="btn pri" data-act="sign" data-i="${i}" data-cost="${c}" data-block="${S.roster.length>=ROSTER_MAX?1:0}">${T('sign')} ${fmt(c)}</button>`;
+    act=`<button class="btn pri" data-act="sign" data-i="${i}" data-cost="${c}" data-block="${S.roster.length>=slotsMax()?1:0}">${T('sign')} ${fmt(c)}</button>`;
   }else act=`<button class="btn ghost" data-act="release" data-id="${p.id}">${T('release')}</button>`;
   return `<article class="pl">${avatar(p)}
     <div class="pl-id"><strong>${esc(nm(p))}${tags}</strong><small>${T('age',p.age)} · ${T('pot')} ${p.pot}</small><em>+${fmt(prod)} pts/s${mode==='prospect'?'':' · '+fmt(p.pts||0)+' '+T('scored')}</em></div>
@@ -738,11 +736,11 @@ function setHtml(el,html){
 function renderInfo(){setHtml($('#info'),boardHtml());updateBoard();}
 function renderRoster(){
   const list=S.roster.slice().sort((a,b)=>b.r-a.r);
-  const rows=list.map(p=>plRow(p,'roster')).join('')+Array.from({length:ROSTER_MAX-list.length},()=>`<div class="slot">${T('free')}</div>`).join('');
+  const rows=list.map(p=>plRow(p,'roster')).join('')+Array.from({length:Math.max(0,slotsMax()-list.length)},()=>`<div class="slot">${T('free')}</div>`).join('')+(ROSTER_MAX-Math.max(slotsMax(),list.length)>0?`<div class="slot" style="opacity:.55">${T('slotLock',ROSTER_MAX-Math.max(slotsMax(),list.length))}</div>`:'');
   const rc=rerollCost();
   const pros=S.prospects.map((p,i)=>plRow(p,'prospect',i)).join('')||`<p class="hint">${T('noProspect')}</p>`;
   setHtml($('#sec-roster'),`<div class="rs">`+
-    panel(`${T('roster')} <small>${list.length}/${ROSTER_MAX}</small>`,`<div class="list">${rows}</div>`)+
+    panel(`${T('roster')} <small>${list.length}/${slotsMax()}</small>`,`<div class="list">${rows}</div>`)+
     panel(T('scouting'),`<div class="list">${pros}</div><button class="btn" data-act="reroll" data-cost="${rc}" data-block="0">${T('reroll',fmt(rc))}</button>`)+`</div>`);
 }
 function renderClub(){
@@ -895,7 +893,7 @@ function act(a,el){
     case 'sign':{
       const i=+el.dataset.i,p=S.prospects[i];if(!p)return;
       const c=signCost(p);
-      if(S.roster.length>=ROSTER_MAX){toast(T('T_full'));return;}
+      if(S.roster.length>=slotsMax()){toast(T('T_full'));return;}
       if(S.pts<c)return;
       S.pts-=c;S.roster.push(p);S.prospects.splice(i,1);
       log('L_sign',[nm(p)],'good');toast(T('T_signs',nm(p).toUpperCase()));renderAll();break;
