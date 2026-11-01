@@ -324,6 +324,7 @@ fr:{
   res_champ:['Champion','Championne'],res_final:'Finaliste',res_semi:'Demi-finale',res_out:'Hors playoffs',
   eraTitle:'Nouvelle ère',
   eraTxt:'Repars de zéro : effectif, installations, points et titres remis à zéro (le bonus x1,5 par titre repart de 0). Tu gardes tes légendes et gagnes +25 % de production permanent. Tu choisis ensuite une nouvelle équipe.',
+  sv_exp:'Exporter',sv_imp:'Importer',sv_ph:'Colle ici un code de sauvegarde, puis appuie sur Importer.',sv_help:'Exporte ta partie en code texte (à copier), ou colle un code pour la restaurer.',sv_copied:'CODE COPIÉ',sv_made:'CODE GÉNÉRÉ : COPIE-LE',sv_bad:'CODE INVALIDE',sv_ok:'PARTIE IMPORTÉE',sv_sure:'Remplacer la partie ?',
   eraBtn:'Ouvrir une nouvelle ère',eraConfirm:'Confirmer ?',eraLock:(r,n)=>`Remporte ${n} titres dans cette ère pour la débloquer (${r}/${n}).`,
   goat:'GOAT',goatTxt:'Objectif ultime, cumulé sur toutes tes ères.',g_t:'Titres',g_l:['Légendes','Légendes'],g_p:'Points marqués',goatDone:'GOAT ! Tu as tout accompli.'
 },
@@ -376,6 +377,7 @@ en:{
   res_champ:'Champion',res_final:'Runner-up',res_semi:'Semi-final',res_out:'Missed playoffs',
   eraTitle:'New era',
   eraTxt:'Start over: roster, facilities, points and titles reset to zero (the x1.5 per title bonus restarts from 0). You keep your legends and gain +25% permanent production. You then choose a new team.',
+  sv_exp:'Export',sv_imp:'Import',sv_ph:'Paste a save code here, then press Import.',sv_help:'Export your game as a text code (to copy), or paste a code to restore it.',sv_copied:'CODE COPIED',sv_made:'CODE CREATED: COPY IT',sv_bad:'INVALID CODE',sv_ok:'GAME IMPORTED',sv_sure:'Replace the game?',
   eraBtn:'Open a new era',eraConfirm:'Confirm?',eraLock:(r,n)=>`Win ${n} titles in this era to unlock it (${r}/${n}).`,
   goat:'GOAT',goatTxt:'The ultimate goal, across all your eras.',g_t:'Titles',g_l:'Legends',g_p:'Points scored',goatDone:'GOAT! You achieved everything.'
 }};
@@ -426,7 +428,7 @@ const uid=()=>'p'+(_id++).toString(36);
 const nm=p=>p.first+' '+p.last;
 const tier=r=>r>=80?'t4':r>=60?'t3':r>=40?'t2':'t1';
 
-let hofList=false;
+let hofList=false, saveVal='', importing=false;
 let S=null, tab='court', armed=null, armT=0;
 const C={pps:0,click:0,rating:0};
 const bb={show:false,next:performance.now()+rnd(40000,80000),until:0};
@@ -643,7 +645,7 @@ function newState(){
   S.roster=startRoster();S.prospects=genProspects();S.season=newSeason();
   return S;
 }
-function save(){try{S.t=Date.now();localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}}
+function save(){if(importing)return;try{S.t=Date.now();localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}}
 function load(){
   try{
     const j=localStorage.getItem(SAVE_KEY);
@@ -742,6 +744,7 @@ function renderClub(){
   }).join('')}</div>`));
 }
 function renderSeason(){
+  if(document.activeElement&&document.activeElement.id==='saveBox')return;
   const se=S.season, order=ranked(se);
   const rows=order.map((i,r)=>{const t=se.teams[i],d=t.pf-t.pa;
     return `<tr class="${i===0?'me':''} ${r===3?'cut':''}"><td>${r+1}</td><td>${esc(i===0?S.name:t.name)}</td><td>${t.w}</td><td>${t.l}</td><td>${d>0?'+':''}${d}</td></tr>`;}).join('');
@@ -751,7 +754,9 @@ function renderSeason(){
   setHtml($('#sec-season'),
     panel(`${T('standings')} <small>${T('seasonN',se.n)}</small>`,`<p class="hint">${status}</p><div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>${T('th_team')}</th><th>${T('th_w')}</th><th>${T('th_l')}</th><th>${T('th_d')}</th></tr></thead><tbody>${rows}</tbody></table></div>${next?`<ul class="log">${next}</ul>`:''}`)+
     panel(T('journal'),`<ul class="log">${logs}</ul>`)+
-    panel(T('gameP'),`<div class="card"><p>${T('saveNote')}</p><button class="btn ghost" data-act="reset">${armed==='reset'?T('resetConfirm'):T('resetBtn')}</button></div>`));
+    panel(T('gameP'),`<div class="card"><p>${T('saveNote')}</p><p>${T('sv_help')}</p><textarea id="saveBox" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="${esc(T('sv_ph'))}" style="width:100%;background:#000;color:var(--white);border:2px solid var(--blue);border-radius:4px;padding:8px;font:13px/1.3 monospace;resize:vertical">${esc(saveVal)}</textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="export">${T('sv_exp')}</button><button class="btn pri" data-act="import">${armed==='import'?T('sv_sure'):T('sv_imp')}</button></div>
+      <button class="btn ghost" data-act="reset">${armed==='reset'?T('resetConfirm'):T('resetBtn')}</button></div>`));
 }
 function renderLegends(){
   if(!hofOpen()){
@@ -903,6 +908,24 @@ function act(a,el){
       const c=upCost(u);if(S.pts<c)return;
       S.pts-=c;S.upg[u.id]++;renderAll();break;
     }
+    case 'export':{
+      save();
+      saveVal='BD2:'+btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+      renderSeason();
+      const b=$('#saveBox');if(b){b.focus();b.select();}
+      let ok=false;
+      try{navigator.clipboard.writeText(saveVal).then(()=>toast(T('sv_copied')),()=>toast(T('sv_made')));ok=true;}catch(e){}
+      if(!ok)toast(T('sv_made'));
+      break;}
+    case 'import':{
+      const b=$('#saveBox');let v=((b&&b.value)||saveVal).trim();
+      let o=null;
+      try{if(v.startsWith('BD2:'))v=v.slice(4);o=JSON.parse(decodeURIComponent(escape(atob(v.replace(/\s+/g,'')))));}catch(e){}
+      if(!o||o.v!==2||!o.season||!o.roster){toast(T('sv_bad'));return;}
+      if(armed!=='import'){arm('import');return;}
+      armed=null;importing=true;
+      try{localStorage.setItem(SAVE_KEY,JSON.stringify(o));toast(T('sv_ok'));setTimeout(()=>location.reload(),600);}catch(e){toast(T('sv_bad'));}
+      break;}
     case 'hoflist':hofList=!hofList;renderLegends();break;
     case 'era':
       if(armed!=='era'){arm('era');return;}
@@ -927,6 +950,7 @@ document.addEventListener('click',e=>{
   if(!el||el.disabled)return;
   act(el.dataset.act,el);
 });
+document.addEventListener('input',e=>{if(e.target.id==='saveBox')saveVal=e.target.value;});
 $('#teamName').addEventListener('input',e=>{
   S.name=e.target.value.trim()||(S.fem?DEF_F:DEF_M);
   S.season.teams[0].name=S.name;
