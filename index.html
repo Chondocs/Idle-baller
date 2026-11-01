@@ -1,0 +1,967 @@
+<title>Buzzer Dynasty</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Pixelify+Sans:wght@500;700&display=swap');
+/* Borne d'arcade 1993 adoucie : nuit bleue, panneaux à bordure blanche et ombre dure, titres rouges jaunes. Mobile : onglets ; grand écran : tout sur une page en 2 ou 3 colonnes. Thème unique voulu. */
+:root{
+  color-scheme:dark;
+  --ink:#000; --navy:#070f45; --blue:#1740d6; --blue2:#0d2490; --red:#e2231a; --yellow:#ffd21f;
+  --white:#fff; --green:#35e06b; --orange:#ff8a00; --mute:#9db0ff;
+  --px:'Pixelify Sans','Trebuchet MS',system-ui,sans-serif; --tx:'Chakra Petch',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--white);font:500 16px/1.3 var(--tx);
+  background-color:var(--navy);
+  background-image:linear-gradient(45deg,rgba(255,255,255,.025) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.025) 75%),linear-gradient(45deg,rgba(255,255,255,.025) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.025) 75%);
+  background-size:8px 8px;background-position:0 0,4px 4px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--navy);z-index:10}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:30;background:repeating-linear-gradient(0deg,rgba(0,0,0,.06) 0 1px,transparent 1px 3px)}
+#app{max-width:560px;margin:0 auto}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:12;background:var(--navy);padding:8px 0 10px;border-bottom:3px solid var(--white);box-shadow:0 3px 0 var(--ink);
+  display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"id speed" "bank bank";gap:6px 10px;align-items:center}
+.id{grid-area:id;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;align-items:center;min-width:0}
+.speed{grid-area:speed}
+.bank{grid-area:bank}
+.lang{position:relative;grid-row:1;grid-column:1}
+#langBtn{display:block;border:2px solid var(--white);border-radius:4px;padding:0;background:none;cursor:pointer;box-shadow:2px 2px 0 var(--ink);line-height:0}
+.flag{width:30px;height:20px;display:block}
+.langmenu{position:absolute;top:100%;left:0;margin-top:8px;background:var(--navy);border:2px solid var(--white);border-radius:6px;box-shadow:3px 3px 0 var(--ink);display:grid;min-width:170px;z-index:20;overflow:hidden}
+.langmenu button{display:flex;align-items:center;gap:10px;padding:10px 12px;background:none;border:0;color:var(--white);font:700 15px var(--px);cursor:pointer;text-align:left}
+.langmenu button[aria-current="true"]{background:var(--blue2);color:var(--yellow)}
+#teamName{grid-row:1;grid-column:2;width:100%;min-width:0;border:0;border-bottom:2px dashed transparent;background:transparent;color:var(--yellow);font:700 19px/1.2 var(--px);text-transform:uppercase;text-shadow:2px 2px 0 var(--ink);padding:2px 0}
+#teamName:focus{border-bottom-color:var(--mute);outline:none}
+.era{grid-column:2;font:600 11px/1.3 var(--tx);letter-spacing:.1em;color:var(--mute);white-space:nowrap}
+.bank{display:flex;align-items:baseline;gap:8px;min-width:0;white-space:nowrap;overflow:hidden}
+.pts{font:700 28px/1 var(--px);color:var(--white);text-shadow:2px 2px 0 var(--red)}
+.unit{font:700 13px var(--px);color:var(--yellow)}
+.rate{font:700 16px var(--px);color:var(--green)}
+.speed{display:flex;gap:5px}
+.speed button{font:700 14px/1 var(--px);padding:9px 8px;border:2px solid var(--white);border-radius:4px;background:var(--blue2);color:var(--white);cursor:pointer;box-shadow:2px 2px 0 var(--ink);touch-action:manipulation}
+.speed button[aria-pressed="true"]{background:var(--yellow);color:var(--ink)}
+
+#view{padding:12px 0 calc(var(--tabsH,56px) + 14px)}
+.cols{display:grid;gap:16px}
+#view[data-cur="court"] .cols{height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - var(--hdr,100px) - var(--tabsH,56px) - 26px);min-height:430px;grid-template-rows:minmax(0,1fr)}
+.col{display:contents}
+.sec{display:none;gap:16px;align-content:start}
+.sec.on{display:grid}
+#sec-court.on{grid-template-rows:minmax(0,1fr) auto;gap:10px;min-height:0}
+
+.panel{background:var(--blue2);border:3px solid var(--white);border-radius:6px;box-shadow:3px 3px 0 var(--ink);min-width:0;overflow:hidden}
+.ph{margin:0;background:var(--red);color:var(--yellow);font:700 14px/1.3 var(--px);letter-spacing:.04em;text-shadow:2px 2px 0 var(--ink);padding:8px 10px;border-bottom:3px solid var(--white);display:flex;justify-content:space-between;align-items:center;gap:8px;text-transform:uppercase}
+.ph small{font:500 15px var(--tx);color:var(--white);text-shadow:none;text-transform:none;letter-spacing:0}
+.pb{padding:10px;display:grid;gap:10px}
+.hint{margin:0;color:var(--mute);font-size:15px}
+.list{display:grid;gap:8px}
+
+.court-wrap{position:relative;min-height:170px;border:3px solid var(--white);border-radius:6px;box-shadow:3px 3px 0 var(--ink);overflow:hidden;background:#b9691f;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.court{position:absolute;inset:0;width:100%;height:100%}
+.hoop{position:absolute;left:50%;top:6.5%;width:2px;height:2px}
+.shoot{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:98px;height:98px;border:0;background:none;padding:0;cursor:pointer;touch-action:manipulation;display:grid;place-items:center}
+.shoot:active{transform:translateX(-50%) scale(.94)}
+.ballsvg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(3px 3px 0 rgba(0,0,0,.4))}
+.ball-fill{fill:var(--orange)}
+.seam{fill:none;stroke:#000;stroke-width:4}
+.shoot b{position:relative;font:700 13px/1 var(--px);letter-spacing:.06em;color:var(--yellow);background:#000;padding:5px 8px 4px;border:2px solid #fff;border-radius:3px}
+.shoot.fire .ballsvg{animation:flame .3s steps(2) infinite}
+@keyframes flame{
+  0%{filter:drop-shadow(0 -8px 0 #ff8a00) drop-shadow(0 -16px 0 #e2231a)}
+  50%{filter:drop-shadow(0 -12px 0 #ffd21f) drop-shadow(0 -22px 0 #ff8a00)}
+}
+.bb{position:absolute;top:8px;right:8px;background:var(--red);color:var(--yellow);border:2px solid var(--white);border-radius:4px;font:700 13px/1.2 var(--px);padding:8px 10px;cursor:pointer;animation:blink .5s steps(2) infinite;box-shadow:2px 2px 0 #000}
+.fire-tag{position:absolute;left:8px;top:8px;font:700 16px var(--px);color:var(--yellow);text-shadow:2px 2px 0 #000;animation:blink2 .3s steps(2) infinite}
+@keyframes blink{50%{background:var(--yellow);color:var(--red)}}
+@keyframes blink2{50%{color:var(--red)}}
+.fly{position:absolute;left:0;top:0;width:22px;height:22px;border-radius:50%;background:var(--orange);border:3px solid #000;pointer-events:none;will-change:transform}
+.float{position:absolute;left:0;top:0;font:700 19px var(--px);color:var(--yellow);text-shadow:2px 2px 0 #000;pointer-events:none;white-space:nowrap}
+
+#info{display:grid;gap:10px}
+.board .ph{font-size:12px;padding:5px 10px}
+.board .pb{background:#05060f;padding:8px 10px 10px;gap:6px}
+.b-clock{display:grid;justify-items:center;gap:2px}
+.b-qtr{font:700 12px var(--px);letter-spacing:.14em;color:var(--mute)}
+.b-time{font:700 30px/1 var(--px);letter-spacing:.06em;color:#ff4a3d;text-shadow:0 0 8px rgba(255,74,61,.55);min-width:5ch;text-align:center}
+.b-teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:end;gap:8px}
+.b-team{display:grid;gap:6px;justify-items:center;text-align:center;min-width:0}
+.tn{font:700 12px/1.2 var(--px);text-transform:uppercase;color:var(--mute);overflow-wrap:anywhere}
+.tn.home{color:var(--white)}
+.sc{font:700 36px/1 var(--px);color:var(--yellow);background:#000;border:2px solid #3a3a52;border-radius:6px;padding:5px 6px;min-width:68px;text-align:center;text-shadow:0 0 8px rgba(255,210,31,.45)}
+.b-vs{font:700 12px var(--px);color:var(--mute);padding-bottom:14px}
+.b-last{font-size:12.5px;color:var(--mute);text-align:center}
+.b-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 12px;font-size:12px;color:var(--mute);border-top:2px solid #1c1c2e;padding-top:6px}
+.b-facts b{font:700 13px var(--px);color:var(--yellow)}
+
+.pl{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--navy);border:2px solid var(--blue);border-radius:6px;padding:6px}
+.av{width:44px;height:52px;display:block;background:var(--blue);border:2px solid #fff;border-radius:4px;shape-rendering:crispEdges}
+.pl-id{min-width:0;display:grid}
+.pl-id strong{font:700 16px/1.2 var(--tx);text-transform:uppercase;overflow-wrap:anywhere}
+.pl-id small{color:var(--mute);font-size:13.5px}
+.pl-id em{font-style:normal;color:var(--green);font-size:13.5px}
+.tag{display:inline-block;font:700 10px/1 var(--px);background:var(--yellow);color:#000;padding:3px 5px;margin-left:4px;vertical-align:middle;border-radius:3px}
+.pl-r{display:grid;justify-items:end;gap:6px}
+.rt{font:700 26px/1 var(--px);text-shadow:2px 2px 0 #000}
+.t1{color:var(--white)}.t2{color:var(--green)}.t3{color:var(--yellow)}.t4{color:var(--orange)}
+.slot{border:2px dashed var(--blue);border-radius:6px;color:var(--mute);padding:14px;text-align:center;font:700 13px var(--px)}
+.btn{font:700 14px/1 var(--px);letter-spacing:.03em;border:2px solid var(--white);border-radius:4px;background:var(--blue);color:var(--white);padding:9px 11px;cursor:pointer;box-shadow:2px 2px 0 #000;touch-action:manipulation;min-height:38px;text-transform:uppercase}
+.btn:active{transform:translate(2px,2px);box-shadow:none}
+.btn.pri{background:var(--yellow);color:#000}
+.btn.ghost{background:transparent;color:var(--mute);border-color:var(--blue)}
+.btn.big{font-size:18px;padding:16px 12px;min-height:58px}
+.btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+
+.up{display:flex;justify-content:space-between;gap:10px;align-items:center;background:var(--navy);border:2px solid var(--blue);border-radius:6px;padding:8px}
+.up>div{min-width:0}
+.up strong{font:700 15px/1.3 var(--px);text-transform:uppercase;color:var(--yellow)}
+.up .lvl{font:700 13px var(--px);color:var(--green);margin-left:8px}
+.up p{margin:2px 0 0;font-size:14px;color:var(--mute)}
+.up .btn{flex:none;min-width:88px}
+
+.scroll{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl th{font:700 12px var(--px);color:var(--yellow);text-align:right;padding:6px}
+.tbl td{padding:5px 6px;text-align:right;border-top:2px solid var(--blue)}
+.tbl th:nth-child(2),.tbl td:nth-child(2){text-align:left}
+.tbl td:first-child,.tbl th:first-child{text-align:left;width:26px}
+.tbl tr.me td{background:var(--red);color:var(--yellow);font-weight:700}
+.tbl tr.cut td{border-bottom:3px dashed var(--yellow)}
+.log{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+.log li{padding:5px 8px;background:var(--navy);border-radius:4px;font-size:14.5px}
+.log li.good{color:var(--green)}
+.log li.bad{color:#ff8a80}
+.log li.gold{color:var(--yellow)}
+.hof{display:grid;gap:6px}
+.hof article{background:var(--navy);border:2px solid var(--blue);border-radius:6px;padding:6px 8px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.hof small{color:var(--mute)}
+.card{background:var(--navy);border:2px solid var(--blue);border-radius:6px;padding:10px;display:grid;gap:10px}
+.card p{margin:0;color:var(--mute);font-size:15px}
+.meter{height:12px;border:2px solid #fff;border-radius:3px;background:#000}
+.meter i{display:block;height:100%;background:var(--green)}
+
+.pick{position:fixed;left:0;right:0;bottom:0;top:calc(var(--hdr,100px) + env(safe-area-inset-top,0px));z-index:11;background:rgba(5,6,15,.95);display:grid;place-items:center;padding:16px}
+.pick .panel{width:min(420px,100%)}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--navy);border-top:3px solid var(--white);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.tabs button{border:0;border-right:2px solid #000;background:var(--blue2);color:var(--white);font:700 12px/1.2 var(--px);padding:14px 2px;min-height:54px;text-transform:uppercase;cursor:pointer}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-current="page"]{background:var(--yellow);color:#000}
+.tabs button[aria-disabled="true"]{opacity:.5;color:var(--mute)}
+.toast{position:fixed;left:50%;top:calc(var(--hdr,100px) + env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%);background:#000;color:var(--yellow);border:2px solid var(--white);border-radius:6px;padding:7px 12px;font:700 12px/1.4 var(--px);display:none;z-index:13;width:max-content;max-width:calc(100vw - 32px);text-align:center}
+.toast.show{display:block}
+
+@media (min-width:900px){
+  #app{max-width:1280px}
+  .tabs{display:none}
+  #view{padding:20px 0 48px}
+  #view[data-cur] .cols{height:auto;min-height:0;grid-template-rows:none}
+  .court-wrap{aspect-ratio:6/5}
+  #sec-court.on{grid-template-rows:none;gap:16px}
+  .top{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"id bank speed";gap:10px 28px}
+  .sec{display:grid}
+  .cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+  .col{display:grid;gap:20px;align-content:start;min-width:0}
+  .col-c{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+}
+@media (min-width:1280px){
+  .cols{grid-template-columns:minmax(320px,400px) minmax(0,1fr) minmax(320px,380px)}
+  .col-c{grid-column:auto;grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion: reduce){
+  .bb,.fire-tag,.shoot.fire .ballsvg{animation:none}
+}
+</style>
+
+<div id="app">
+  <header class="top">
+    <div class="id">
+      <div class="lang">
+        <button id="langBtn" data-act="lang" aria-haspopup="true" aria-expanded="false" data-i-aria="ariaLang"></button>
+        <div class="langmenu" id="langMenu" hidden></div>
+      </div>
+      <input id="teamName" maxlength="24" data-i-aria="ariaName" autocomplete="off" spellcheck="false">
+      <span class="era" id="eraTag"></span>
+    </div>
+    <div class="speed" role="group" data-i-aria="ariaSpeed">
+      <button data-speed="1" aria-pressed="true">x1</button>
+      <button data-speed="2" aria-pressed="false">x2</button>
+      <button data-speed="3" aria-pressed="false">x3</button>
+      <button data-speed="5" aria-pressed="false">x5</button>
+    </div>
+    <div class="bank"><span class="pts" id="pts">0</span><span class="unit" data-i="pts">PTS</span><span class="rate" id="pps">+0/s</span></div>
+  </header>
+  <main id="view">
+    <div class="cols">
+      <div class="col col-a">
+        <section class="sec on" id="sec-court" data-sec="court">
+          <div class="court-wrap" id="courtWrap">
+            <svg class="court" viewBox="0 0 360 300" preserveAspectRatio="none" aria-hidden="true">
+              <defs><pattern id="wood" width="360" height="24" patternUnits="userSpaceOnUse"><rect width="360" height="12" fill="#c8782e"/><rect y="12" width="360" height="12" fill="#b9691f"/></pattern></defs>
+              <rect width="360" height="300" fill="url(#wood)"/>
+              <rect x="125" y="0" width="110" height="140" fill="#e2231a"/>
+              <g fill="none" stroke="#fff" stroke-width="4">
+                <path d="M125 0V140H235V0"/>
+                <path d="M125 140A55 55 0 0 1 235 140"/>
+                <path stroke-dasharray="8 8" d="M125 140A55 55 0 0 0 235 140"/>
+                <path d="M28 0V98A152 152 0 0 0 332 98V0"/>
+                <path d="M120 300A60 60 0 0 1 240 300"/>
+              </g>
+              <rect x="150" y="6" width="60" height="8" fill="#fff" stroke="#000" stroke-width="2"/>
+              <rect x="172" y="14" width="16" height="4" fill="#ff8a00" stroke="#000" stroke-width="2"/>
+              <path d="M172 18l3 10M188 18l-3 10M180 18v10" stroke="#fff" stroke-width="2"/>
+              <rect x="2" y="2" width="356" height="296" fill="none" stroke="#000" stroke-width="4"/>
+            </svg>
+            <span class="hoop" id="hoop"></span>
+            <span class="fire-tag" id="fireTag" data-i="fire" hidden></span>
+            <button class="shoot" id="shoot" data-act="shoot" data-i-aria="ariaShoot">
+              <svg class="ballsvg" viewBox="0 0 100 100" aria-hidden="true"><circle class="ball-fill" cx="50" cy="50" r="46" stroke="#000" stroke-width="6"/><path class="seam" d="M4 50H96M50 4V96M20 16C42 34 42 66 20 84M80 16C58 34 58 66 80 84"/></svg>
+              <b data-i="shoot"></b>
+            </button>
+            <button class="bb" id="bb" data-act="bb" data-i="bb" hidden></button>
+          </div>
+          <div id="info"></div>
+        </section>
+        <section class="sec" id="sec-club" data-sec="club"></section>
+      </div>
+      <div class="col col-b">
+        <section class="sec" id="sec-roster" data-sec="roster"></section>
+      </div>
+      <div class="col col-c">
+        <section class="sec" id="sec-season" data-sec="season"></section>
+        <section class="sec" id="sec-legends" data-sec="legends"></section>
+      </div>
+    </div>
+  </main>
+  <nav class="tabs" data-i-aria="ariaTabs"><div class="tabs-in" id="tabs"></div></nav>
+</div>
+<div id="pick" class="pick" hidden>
+  <div class="panel"><h2 class="ph" data-i="pickTitle"></h2>
+    <div class="pb"><p class="hint" data-i="pickHint"></p>
+      <button class="btn pri big" data-pick="m" data-i="pickM"></button>
+      <button class="btn pri big" data-pick="f" data-i="pickF"></button>
+    </div></div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(()=>{
+'use strict';
+const $=(s,r=document)=>r.querySelector(s);
+const SAVE_KEY='buzzer-dynasty-v2', LANG_KEY='buzzer-lang';
+const TICK=18, G=14, ROSTER_MAX=10, HOF_TITLES=6, HOF_RINGS=3, HOF_PTS=100000;
+const DEF_M='Loire Pionniers', DEF_F='Loire Pionnières';
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let lang='fr';
+try{const l=localStorage.getItem(LANG_KEY);if(l==='fr'||l==='en')lang=l;}catch(e){}
+
+/* ---------- textes (FR avec variantes féminines, EN) ---------- */
+function ord(n){
+  if(lang==='fr')return n===1?(S&&S.fem?'1re':'1er'):n+'e';
+  const m=n%100;if(m>=11&&m<=13)return n+'th';
+  return n+({1:'st',2:'nd',3:'rd'}[n%10]||'th');
+}
+const DICT={
+fr:{
+  pts:'PTS',shoot:'TIRER',bb:'BUZZER BEATER !',fire:'EN FEU ! x2',
+  ariaName:'Nom du club',ariaSpeed:'Vitesse du jeu',ariaShoot:'Tirer au panier',ariaTabs:'Sections',ariaLang:'Langue',
+  pickTitle:'Nouvelle carrière',pickHint:'Choisis ton équipe.',pickM:'Équipe masculine',pickF:'Équipe féminine',
+  eraTag:(e,s)=>`ÈRE ${e} · SAISON ${s}`,
+  tab_court:'Terrain',tab_roster:'Effectif',tab_club:'Club',tab_season:'Saison',tab_hof:'HOF',
+  age:n=>`${n} ans`,pot:'potentiel',scored:'marqués',free:'PLACE LIBRE',release:'Libérer',sign:'Signer',
+  sonOf:['FILS DE','FILLE DE'],ringsTag:n=>`${n} BAGUE${n>1?'S':''}`,
+  roster:'Effectif',scouting:'Détection',noProspect:'Plus aucun profil. Relance une détection.',reroll:c=>`Nouvelle détection ${c}`,
+  facilities:'Installations',lvl:n=>`NIV ${n}`,max:'Max',
+  u_shoot:'Salle de tir',d_shoot:l=>`+1,5 pt par tir et par niveau. Actuel : +${fmt(1.5*l)}.`,
+  u_coach:['Entraîneur','Entraîneuse'],d_coach:l=>`+12 % de production par niveau. Actuel : +${12*l} %.`,
+  u_arena:'Arène',d_arena:l=>`Billetterie automatique. Actuel : ${fmt(l?3*Math.pow(l,1.25):0)} pts/s.`,
+  u_train:['Préparateur','Préparatrice'],
+  d_train:[l=>`Les jeunes progressent plus vite, les vétérans déclinent moins. Niveau ${l}/10.`,l=>`Les jeunes progressent plus vite, les vétérantes déclinent moins. Niveau ${l}/10.`],
+  u_form:'Centre de formation',d_form:l=>`Meilleurs profils à la détection. Niveau ${l}/10.`,
+  u_scout:'Analyste vidéo',d_scout:l=>`+1,5 de note d'équipe en match par niveau. Actuel : +${fmt(1.5*l)}.`,
+  u_agent:['Agent','Agente'],d_agent:l=>`Signatures moins chères : -${5*l} %. Niveau ${l}/10.`,
+  u_recr:['Réseau de recruteurs','Réseau de recruteuses'],d_recr:l=>`+1 profil à la détection par niveau. Actuel : ${3+l} profils. Niveau ${l}/3.`,
+  u_fans:'Fan club',d_fans:l=>`Les victoires rapportent +25 % de plus par niveau. Actuel : +${25*l} %.`,
+  u_mascot:'Mascotte',d_mascot:l=>`« En feu » dure +2 s par niveau. Actuel : ${6+2*l} s.`,
+  seasonN:n=>`Saison ${n}`,day:(j,g)=>`Journée ${j}/${g}`,dayShort:n=>`J${n}`,semi:'Demi-finale',final:'Finale',offseason:'Intersaison',
+  lastMatch:(win,a,b)=>`Dernier match : ${win?'victoire':'défaite'} ${a}-${b}`,noMatch:'Aucun match joué',opponent:'Adversaire',
+  f_rating:'Note',f_shot:'Par tir',f_record:'Bilan',f_titles:'Titres',rec:(w,l)=>`${w}V ${l}D`,qEnd:'FIN',qBreak:'PAUSE',
+  standings:'Classement',th_team:'Équipe',th_w:'V',th_l:'D',th_d:'Diff',
+  poNote:'Les 4 premières jouent les playoffs (ligne pointillée).',poOn:'Playoffs en cours.',
+  champIs:[n=>`Champion : ${n}.`,n=>`Championne : ${n}.`],journal:'Journal',
+  gameP:'Partie',saveNote:'La partie est enregistrée dans ce navigateur uniquement.',resetBtn:'Recommencer à zéro',resetConfirm:'Tout effacer ?',
+  L_welcome:'Bienvenue au club. Premier match dans quelques secondes.',
+  L_game:(j,win,a,b,opp)=>`J${j} : ${win?'victoire':'défaite'} ${a}-${b} contre ${opp}.`,
+  L_po:r=>`Fin de saison régulière : ${ord(r)}. Playoffs !`,
+  L_semiW:(a,b)=>`Demi-finale gagnée ${a}-${b}. Place en finale !`,L_semiL:(a,b)=>`Demi-finale perdue ${a}-${b}.`,L_finalL:(a,b)=>`Finale perdue ${a}-${b}.`,
+  L_champ:[n=>`CHAMPIONS ! Titre n°${n} : production ×1,5.`,n=>`CHAMPIONNES ! Titre n°${n} : production ×1,5.`],
+  L_other:t=>`${t} remporte le titre.`,L_retire:n=>`${n} prend sa retraite.`,L_hofIn:n=>`${n} entre au Hall of Fame.`,
+  L_draft:n=>`Saison ${n} : nouvelle draft, profils renouvelés.`,L_sign:n=>`${n} signe au club.`,L_release:n=>`${n} quitte le club.`,
+  L_era:(n,m)=>`Nouvelle ère ${n} : héritage ×${m}.`,
+  T_hofUnlock:'HALL OF FAME DÉBLOQUÉ !',T_champ:['CHAMPIONS ! PRODUCTION x1,5','CHAMPIONNES ! PRODUCTION x1,5'],
+  T_beater:g=>`BUZZER BEATER ! +${g} PTS`,T_away:g=>`PENDANT TON ABSENCE : +${g} PTS`,T_hofLocked:(r,n)=>`HALL OF FAME : ${r}/${n} TITRES`,
+  T_hofIn:n=>`${n} ENTRE AU HALL OF FAME`,T_full:'EFFECTIF COMPLET : LIBÈRE UNE PLACE',
+  T_keep:['GARDE AU MOINS UN JOUEUR','GARDE AU MOINS UNE JOUEUSE'],T_signs:n=>`${n} SIGNE !`,
+  hof:'Hall of Fame',locked:'verrouillé',lockTxt:(r,n)=>`Remporte ${n} titres pour le débloquer. Titres : ${r}/${n}.`,
+  heritage:'Héritage',heritSub:m=>`x${m} sur la production`,
+  heritTxt:(rings,tm,leg,era)=>`${rings} titre${rings>1?'s':''} dans cette ère (x1,5 chacun, soit x${tm}), ${leg} légende${leg>1?'s':''} (+10 % chacune), ère ${era}.`,
+  hofRule:[(r,p)=>`Entrée dès qu'un joueur a au moins ${r} bagues avec le club et ${p} pts marqués en carrière, sans attendre sa retraite. Une légende peut revenir en draft sous la forme de son fils.`,
+           (r,p)=>`Entrée dès qu'une joueuse a au moins ${r} bagues avec le club et ${p} pts marqués en carrière, sans attendre sa retraite. Une légende peut revenir en draft sous la forme de sa fille.`],
+  noLegend:"Aucune légende pour l'instant.",palmares:'Palmarès',noSeason:'Aucune saison terminée.',
+  peakLine:(pk,pts,s)=>`Pic à ${pk} · ${pts} pts · ${s} saisons`,active:'en activité',
+  hist:(n,res,rec,champ)=>`Saison ${n} · ${res} (${rec}) · ${champ}`,
+  res_champ:['Champion','Championne'],res_final:'Finaliste',res_semi:'Demi-finale',res_out:'Hors playoffs',
+  eraTitle:'Nouvelle ère',
+  eraTxt:'Repars de zéro : effectif, installations, points et titres remis à zéro (le bonus x1,5 par titre repart de 0). Tu gardes tes légendes et gagnes +25 % de production permanent. Tu choisis ensuite une nouvelle équipe.',
+  eraBtn:'Ouvrir une nouvelle ère',eraConfirm:'Confirmer ?',eraLock:(r,n)=>`Remporte ${n} titres dans cette ère pour la débloquer (${r}/${n}).`,
+  goat:'GOAT',goatTxt:'Objectif ultime, cumulé sur toutes tes ères.',g_t:'Titres',g_l:['Légendes','Légendes'],g_p:'Points marqués',goatDone:'GOAT ! Tu as tout accompli.'
+},
+en:{
+  pts:'PTS',shoot:'SHOOT',bb:'BUZZER BEATER!',fire:'ON FIRE! x2',
+  ariaName:'Club name',ariaSpeed:'Game speed',ariaShoot:'Shoot a basket',ariaTabs:'Sections',ariaLang:'Language',
+  pickTitle:'New career',pickHint:'Choose your team.',pickM:"Men's team",pickF:"Women's team",
+  eraTag:(e,s)=>`ERA ${e} · SEASON ${s}`,
+  tab_court:'Court',tab_roster:'Roster',tab_club:'Club',tab_season:'Season',tab_hof:'HOF',
+  age:n=>`${n} yrs`,pot:'potential',scored:'scored',free:'FREE SLOT',release:'Release',sign:'Sign',
+  sonOf:['SON OF','DAUGHTER OF'],ringsTag:n=>`${n} RING${n>1?'S':''}`,
+  roster:'Roster',scouting:'Scouting',noProspect:'No prospects left. Scout again.',reroll:c=>`New scouting ${c}`,
+  facilities:'Facilities',lvl:n=>`LVL ${n}`,max:'Max',
+  u_shoot:'Shooting gym',d_shoot:l=>`+1.5 pt per shot and per level. Current: +${fmt(1.5*l)}.`,
+  u_coach:'Coach',d_coach:l=>`+12% production per level. Current: +${12*l}%.`,
+  u_arena:'Arena',d_arena:l=>`Automatic ticket sales. Current: ${fmt(l?3*Math.pow(l,1.25):0)} pts/s.`,
+  u_train:'Trainer',d_train:l=>`Young players improve faster, veterans decline slower. Level ${l}/10.`,
+  u_form:'Academy',d_form:l=>`Better prospects when scouting. Level ${l}/10.`,
+  u_scout:'Video analyst',d_scout:l=>`+1.5 team rating in games per level. Current: +${fmt(1.5*l)}.`,
+  u_agent:'Agent',d_agent:l=>`Cheaper signings: -${5*l}%. Level ${l}/10.`,
+  u_recr:'Scouting network',d_recr:l=>`+1 prospect per level. Current: ${3+l} prospects. Level ${l}/3.`,
+  u_fans:'Fan club',d_fans:l=>`Wins pay +25% more per level. Current: +${25*l}%.`,
+  u_mascot:'Mascot',d_mascot:l=>`"On fire" lasts +2 s per level. Current: ${6+2*l} s.`,
+  seasonN:n=>`Season ${n}`,day:(j,g)=>`Game ${j}/${g}`,dayShort:n=>`G${n}`,semi:'Semi-final',final:'Final',offseason:'Offseason',
+  lastMatch:(win,a,b)=>`Last game: ${win?'win':'loss'} ${a}-${b}`,noMatch:'No game played yet',opponent:'Opponent',
+  f_rating:'Rating',f_shot:'Per shot',f_record:'Record',f_titles:'Titles',rec:(w,l)=>`${w}W ${l}L`,qEnd:'END',qBreak:'BREAK',
+  standings:'Standings',th_team:'Team',th_w:'W',th_l:'L',th_d:'Diff',
+  poNote:'The top 4 play the playoffs (dashed line).',poOn:'Playoffs in progress.',
+  champIs:n=>`Champion: ${n}.`,journal:'Log',
+  gameP:'Game',saveNote:'Your game is saved in this browser only.',resetBtn:'Start over',resetConfirm:'Erase everything?',
+  L_welcome:'Welcome to the club. First game in a few seconds.',
+  L_game:(j,win,a,b,opp)=>`G${j}: ${win?'win':'loss'} ${a}-${b} vs ${opp}.`,
+  L_po:r=>`Regular season over: ${ord(r)}. Playoffs!`,
+  L_semiW:(a,b)=>`Semi-final won ${a}-${b}. On to the final!`,L_semiL:(a,b)=>`Semi-final lost ${a}-${b}.`,L_finalL:(a,b)=>`Final lost ${a}-${b}.`,
+  L_champ:n=>`CHAMPIONS! Title #${n}: production x1.5.`,
+  L_other:t=>`${t} wins the title.`,L_retire:n=>`${n} retires.`,L_hofIn:n=>`${n} enters the Hall of Fame.`,
+  L_draft:n=>`Season ${n}: new draft, fresh prospects.`,L_sign:n=>`${n} signs with the club.`,L_release:n=>`${n} leaves the club.`,
+  L_era:(n,m)=>`New era ${n}: legacy x${m}.`,
+  T_hofUnlock:'HALL OF FAME UNLOCKED!',T_champ:'CHAMPIONS! PRODUCTION x1.5',
+  T_beater:g=>`BUZZER BEATER! +${g} PTS`,T_away:g=>`WHILE YOU WERE AWAY: +${g} PTS`,T_hofLocked:(r,n)=>`HALL OF FAME: ${r}/${n} TITLES`,
+  T_hofIn:n=>`${n} ENTERS THE HALL OF FAME`,T_full:'ROSTER FULL: RELEASE A SLOT',
+  T_keep:'KEEP AT LEAST ONE PLAYER',T_signs:n=>`${n} SIGNS!`,
+  hof:'Hall of Fame',locked:'locked',lockTxt:(r,n)=>`Win ${n} titles to unlock it. Titles: ${r}/${n}.`,
+  heritage:'Legacy',heritSub:m=>`x${m} production`,
+  heritTxt:(rings,tm,leg,era)=>`${rings} title${rings>1?'s':''} this era (x1.5 each, so x${tm}), ${leg} legend${leg>1?'s':''} (+10% each), era ${era}.`,
+  hofRule:(r,p)=>`Inducted as soon as a player has at least ${r} rings with the club and ${p} career points, no need to wait for retirement. A legend can come back in the draft as a son or daughter.`,
+  noLegend:'No legends yet.',palmares:'Honours',noSeason:'No season finished yet.',
+  peakLine:(pk,pts,s)=>`Peak ${pk} · ${pts} pts · ${s} seasons`,active:'active',
+  hist:(n,res,rec,champ)=>`Season ${n} · ${res} (${rec}) · ${champ}`,
+  res_champ:'Champion',res_final:'Runner-up',res_semi:'Semi-final',res_out:'Missed playoffs',
+  eraTitle:'New era',
+  eraTxt:'Start over: roster, facilities, points and titles reset to zero (the x1.5 per title bonus restarts from 0). You keep your legends and gain +25% permanent production. You then choose a new team.',
+  eraBtn:'Open a new era',eraConfirm:'Confirm?',eraLock:(r,n)=>`Win ${n} titles in this era to unlock it (${r}/${n}).`,
+  goat:'GOAT',goatTxt:'The ultimate goal, across all your eras.',g_t:'Titles',g_l:'Legends',g_p:'Points scored',goatDone:'GOAT! You achieved everything.'
+}};
+function T(k,...a){
+  let v=DICT[lang][k];
+  if(v===undefined)v=DICT.fr[k];
+  if(Array.isArray(v))v=v[S&&S.fem?1:0];
+  return typeof v==='function'?v(...a):v;
+}
+
+/* ---------- données ---------- */
+const FIRST_M=['Malo','Théo','Ibrahim','Jonas','Kenzo','Lucas','Matteo','Noé','Samir','Tidiane','Yanis','Andrés','Dario','Emre','Hugo','Ilan','Jules','Karim','Léandre','Marek','Nils','Omar','Paulo','Rayan','Silas','Tomas','Viktor','Wassim','Zacharie','Amadou','Bastien','Cyril','Dorian','Elias','Félix','Gaspard','Hakim','Ivan','Joaquim','Kilian'];
+const FIRST_F=['Léa','Emma','Inès','Camille','Manon','Jade','Lina','Maëlle','Nora','Sofia','Anaïs','Clara','Fatou','Ilona','Jeanne','Kenza','Louane','Maya','Naomi','Océane','Prisca','Rania','Salomé','Tess','Yasmine','Zoé','Aïssatou','Béatrice','Chloé','Daria','Eva','Fanny','Gwen','Hana','Iris','Julia','Katia','Laura','Mia','Nadia'];
+const LAST=['Marchetti','Okafor','Lemaire','Duval','Haddad','Novak','Sorel','Vidal','Kessler','Diallo','Brassac','Moreau','Lefèvre','Varga','Mbaye','Roussel','Ferrand','Bellamy','Ouedraogo','Pasquier','Ivanov','Delmas','Quintana','Berthier','Salvi','Nguyen','Kowalski','Lacroix','Mendes','Aubry','Fontaine','Rosales','Thibault','Hamidi','Perrin','Estrada','Lombard','Gauthier','Sylla','Wójcik','Cordier','Barros','Vasseur'];
+const TEAMS_M=['Vallombre Corbeaux','Port-Sable Marées','Haut-Brasier Forgerons','Lacombe Hérons','Mont-Cerf Rafales','Saint-Orme Bisons','Clairval Tonnerre'];
+const TEAMS_F=['Vallombre Corneilles','Port-Sable Marées','Haut-Brasier Forgeronnes','Lacombe Aigrettes','Mont-Cerf Rafales','Saint-Orme Panthères','Clairval Tempêtes'];
+const UPG=[
+  {id:'shoot',base:25,g:1.45},
+  {id:'coach',base:80,g:1.5},
+  {id:'arena',base:150,g:1.6},
+  {id:'train',base:300,g:1.7,max:10},
+  {id:'form',base:500,g:1.75,max:10},
+  {id:'scout',base:400,g:1.7,max:15},
+  {id:'agent',base:600,g:1.8,max:10},
+  {id:'recr',base:800,g:2.4,max:3},
+  {id:'fans',base:350,g:1.65,max:10},
+  {id:'mascot',base:250,g:1.6,max:8}
+];
+const UPG0=()=>({shoot:0,coach:0,arena:0,train:0,form:0,scout:0,agent:0,recr:0,fans:0,mascot:0});
+const hofOpen=()=>S.hofUnlocked||S.rings>=HOF_TITLES;
+const GOAT={t:100,l:100,p:1e11};
+
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function fmt(n){
+  if(!isFinite(n))return '0';
+  const a=Math.abs(n), fr=lang==='fr', loc=fr?'fr-FR':'en-US';
+  const u=fr?[[1e12,' Bn'],[1e9,' Md'],[1e6,' M'],[1e3,' k']]:[[1e12,'T'],[1e9,'B'],[1e6,'M'],[1e3,'K']];
+  for(const [v,s] of u) if(a>=v) return (n/v).toLocaleString(loc,{maximumFractionDigits:2})+s;
+  return n.toLocaleString(loc,{maximumFractionDigits:a<10?1:0});
+}
+let _id=Date.now()+Math.floor(Math.random()*1000);
+const uid=()=>'p'+(_id++).toString(36);
+const nm=p=>p.first+' '+p.last;
+const tier=r=>r>=80?'t4':r>=60?'t3':r>=40?'t2':'t1';
+
+let hofList=false;
+let S=null, tab='court', armed=null, armT=0;
+const C={pps:0,click:0,rating:0};
+const bb={show:false,next:performance.now()+rnd(40000,80000),until:0};
+let lastTap=0,streak=0,fireUntil=0;
+
+/* ---------- joueurs : une seule note ---------- */
+function genPlayer(o){
+  const p={id:uid(),first:o.first||pick(S.fem?FIRST_F:FIRST_M),last:o.last||pick(LAST),age:o.age,r:clamp(Math.round(o.r),8,97),pot:0,peak:0,seasons:0,rings:0,pts:0,hof:false,son:o.son||null};
+  const up=o.age<=21?rnd(8,22):o.age<=25?rnd(3,10):o.age<=29?rnd(0,4):rnd(0,1);
+  p.pot=clamp(p.r+up+(o.potBonus||0),p.r,95);
+  p.peak=p.r;
+  return p;
+}
+const startRoster=()=>[genPlayer({r:31,age:19}),genPlayer({r:29,age:21}),genPlayer({r:30,age:20})];
+function genProspects(){
+  const out=[], f=S.upg.form, n=3+S.upg.recr;
+  for(let i=0;i<n;i++){
+    const o={r:clamp(Math.round(22+f*3.5+S.eraSeason*1.6+rnd(-6,8)),18,88),age:rnd(18,30)};
+    if(S.legends.length&&Math.random()<0.3){
+      const L=pick(S.legends);
+      o.last=L.last;o.son=L.first+' '+L.last;o.r+=4;o.potBonus=6;o.age=rnd(18,21);
+    }
+    out.push(genPlayer(o));
+  }
+  return out;
+}
+function signCost(p){
+  let c=3*Math.pow(1.14,p.r)*(1+Math.max(0,p.pot-p.r)*0.03);
+  if(p.age>=31)c*=0.7;
+  c*=1-0.05*S.upg.agent;
+  return Math.max(10,Math.round(c));
+}
+const upCost=u=>Math.round(u.base*Math.pow(u.g,S.upg[u.id]));
+const rerollCost=()=>Math.round(Math.max(20,C.pps*15)*(1+S.rerolls*0.5));
+
+/* ---------- économie : plus la note est haute, plus il marque ---------- */
+const pp=r=>0.03*Math.pow(r/10,3);
+const legacy=()=>1+S.legends.length*0.1;
+const titleMult=()=>Math.pow(1.5,S.rings);
+const eraMult=()=>1+0.25*(S.era-1);
+const mult=()=>(1+0.12*S.upg.coach)*titleMult()*legacy()*eraMult();
+const flat=()=>S.upg.arena?3*Math.pow(S.upg.arena,1.25):0;
+function recalc(){
+  let b=0,sum=0;
+  S.roster.forEach(p=>{b+=pp(p.r);sum+=p.r;});
+  C.pps=(b+flat())*mult();
+  C.click=(1+1.5*S.upg.shoot+0.06*C.pps)*legacy()*eraMult()*(performance.now()<fireUntil?2:1);
+  C.rating=(sum+(ROSTER_MAX-S.roster.length)*15)/ROSTER_MAX+1.5*S.upg.scout;
+}
+function gain(g){S.pts+=g;S.total+=g;}
+
+/* ---------- ligue ---------- */
+function newSeason(){
+  const L=Math.min(88,24+3.5*(S.eraSeason-1));
+  const teams=[{name:S.name,w:0,l:0,pf:0,pa:0,ovr:0}];
+  (S.fem?TEAMS_F:TEAMS_M).forEach(n=>teams.push({name:n,w:0,l:0,pf:0,pa:0,ovr:Math.round(L+rnd(-7,7))}));
+  return {n:S.seasonN,phase:'reg',game:0,sched:shuffle([1,2,3,4,5,6,7,1,2,3,4,5,6,7]),teams,po:null,champ:null};
+}
+const teamR=i=>i===0?C.rating:S.season.teams[i].ovr;
+function simGame(ra,rb){
+  const aWin=Math.random()<1/(1+Math.exp(-(ra-rb)/5));
+  const base=Math.round(74+(ra+rb)/2*0.2+rnd(-5,7));
+  const win=base+Math.max(1,Math.round(Math.abs(gauss())*7)+1);
+  return aWin?{a:win,b:base,aWin:true}:{a:base,b:win,aWin:false};
+}
+const duelAI=(a,b)=>simGame(teamR(a),teamR(b)).aWin?a:b;
+function ranked(se){
+  return se.teams.map((t,i)=>i).sort((x,y)=>{
+    const A=se.teams[x],B=se.teams[y];
+    return (B.w-A.w)||((B.pf-B.pa)-(A.pf-A.pa))||(x-y);
+  });
+}
+function applyResult(se,a,b,r){
+  const A=se.teams[a],B=se.teams[b];
+  A.pf+=r.a;A.pa+=r.b;B.pf+=r.b;B.pa+=r.a;
+  if(r.aWin){A.w++;B.l++;}else{B.w++;A.l++;}
+}
+function log(key,a,k){S.log.unshift({key,a:a||[],k:k||''});if(S.log.length>40)S.log.length=40;}
+/* Le match à venir est tiré au coup d'envoi : le tableau d'affichage le joue en direct. */
+function prepNext(){
+  recalc();
+  const se=S.season;let opp;
+  if(se.phase==='reg'){
+    opp=se.sched[se.game];
+    S.cur={opp,lab:{k:'day',n:se.game+1},r:simGame(C.rating,teamR(opp))};
+  }else if(se.phase==='po'){
+    const po=se.po;
+    if(po.round===0){const m=po.semis.find(x=>x.includes(0));opp=m[0]===0?m[1]:m[0];}else opp=po.final[1];
+    S.cur={opp,lab:{k:po.round===0?'semi':'final'},r:simGame(C.rating,teamR(opp))};
+  }else S.cur=null;
+}
+function regGame(){
+  const se=S.season, opp=S.cur.opp, r=S.cur.r;
+  applyResult(se,0,opp,r);
+  const others=shuffle([1,2,3,4,5,6,7].filter(i=>i!==opp));
+  for(let i=0;i<6;i+=2){const a=others[i],b=others[i+1];applyResult(se,a,b,simGame(teamR(a),teamR(b)));}
+  se.game++;
+  S.last={lab:{k:'day',n:se.game},a:S.name,b:se.teams[opp].name,sa:r.a,sb:r.b,win:r.aWin};
+  log('L_game',[se.game,r.aWin,r.a,r.b,se.teams[opp].name],r.aWin?'good':'bad');
+  gain(C.pps*(r.aWin?40*(1+0.25*S.upg.fans):12));
+  if(se.game>=G)startPlayoffs();
+}
+function startPlayoffs(){
+  const se=S.season, order=ranked(se), top=order.slice(0,4);
+  se.rank=order.indexOf(0)+1;
+  se.po={round:0,semis:[[top[0],top[3]],[top[1],top[2]]],final:null};
+  if(!top.includes(0)){
+    finishSeason(duelAI(duelAI(top[0],top[3]),duelAI(top[1],top[2])),'out');
+    return;
+  }
+  se.phase='po';
+  log('L_po',[se.rank],'gold');
+}
+function poGame(){
+  const se=S.season, po=se.po, opp=S.cur.opp, r=S.cur.r;
+  if(po.round===0){
+    const other=po.semis.find(m=>!m.includes(0));
+    S.last={lab:{k:'semi'},a:S.name,b:se.teams[opp].name,sa:r.a,sb:r.b,win:r.aWin};
+    const ow=duelAI(other[0],other[1]);
+    if(r.aWin){
+      po.round=1;po.final=[0,ow];gain(C.pps*90*(1+0.25*S.upg.fans));
+      log('L_semiW',[r.a,r.b],'good');
+    }else{
+      log('L_semiL',[r.a,r.b],'bad');
+      finishSeason(duelAI(opp,ow),'semi');
+    }
+  }else{
+    S.last={lab:{k:'final'},a:S.name,b:se.teams[opp].name,sa:r.a,sb:r.b,win:r.aWin};
+    if(r.aWin)finishSeason(0,'champ');
+    else{log('L_finalL',[r.a,r.b],'bad');finishSeason(opp,'final');}
+  }
+}
+function finishSeason(champ,res){
+  const se=S.season, t=se.teams[0];
+  se.phase='off';se.champ=champ;
+  S.history.push({n:se.n,champ:se.teams[champ].name,res,rec:`${t.w}-${t.l}`,era:S.era});
+  if(S.history.length>30)S.history.shift();
+  if(champ===0){
+    S.rings++;S.titlesAll++;S.eraTitles++;if(S.rings>=HOF_TITLES)S.hofUnlocked=true;S.roster.forEach(p=>{p.rings++;});
+    gain(C.pps*300);
+    log('L_champ',[S.rings],'gold');
+    toast(S.rings===HOF_TITLES?T('T_hofUnlock'):T('T_champ'));
+  }else log('L_other',[se.teams[champ].name]);
+}
+function progress(p){
+  const t=S.upg.train;let d;
+  if(p.age<=24)d=rnd(1,4)+(Math.random()<Math.min(.6,t*.1)?1:0);
+  else if(p.age<=29)d=rnd(-1,2);
+  else if(p.age<=33)d=-rnd(0,2);
+  else d=-rnd(1,3);
+  if(d<0&&Math.random()<t*.06)d=0;
+  if(d>0&&p.r>=p.pot)d=0;
+  p.r=clamp(p.r+d,5,99);p.peak=Math.max(p.peak,p.r);
+}
+function offseason(){
+  const retired=[];
+  S.roster.forEach(p=>{p.age++;p.seasons++;progress(p);});
+  S.roster=S.roster.filter(p=>{
+    const r=p.age>=39||(p.age>=34&&Math.random()<0.25+(p.age-34)*0.15+(p.r<55?0.2:0));
+    if(r)retired.push(p);
+    return !r;
+  });
+  retired.forEach(p=>log('L_retire',[nm(p)]));
+  S.seasonN++;S.eraSeason++;S.rerolls=0;
+  S.prospects=genProspects();
+  S.season=newSeason();
+  S.last=null;
+  log('L_draft',[S.seasonN]);
+}
+/* Entrée au Hall of Fame dès que les critères sont remplis, sans attendre la retraite. */
+function checkHof(){
+  let any=false;
+  S.roster.forEach(p=>{
+    if(!p.hof&&p.rings>=HOF_RINGS&&(p.pts||0)>=HOF_PTS){
+      p.hof=true;any=true;
+      S.legends.push({id:p.id,first:p.first,last:p.last,peak:p.peak,rings:p.rings,pts:Math.round(p.pts),seasons:p.seasons+1});
+      log('L_hofIn',[nm(p)],'gold');
+      toast(T('T_hofIn',nm(p).toUpperCase()));
+    }
+  });
+  if(any){recalc();renderAll();}
+}
+function playTick(){
+  if(!S.cur)prepNext();
+  const ph=S.season.phase;
+  if(ph==='reg')regGame();else if(ph==='po')poGame();else offseason();
+  prepNext();
+  if(ph==='off')renderAll();else{renderInfo();renderSeason();renderTabs();}
+  updateLive();
+}
+function syncName(){
+  if(S.name===DEF_M||S.name===DEF_F)S.name=S.fem?DEF_F:DEF_M;
+  $('#teamName').value=S.name;
+}
+function startCareer(fem){
+  S.fem=fem;syncName();
+  S.roster=startRoster();S.prospects=genProspects();S.season=newSeason();
+  S.last=null;S.timer=TICK;S.rerolls=0;S.pending=false;S.cur=null;
+  if(S.era>1)log('L_era',[S.era,(eraMult()).toFixed(2)],'gold');else log('L_welcome');
+  prepNext();
+  $('#pick').hidden=true;
+  tab='court';renderAll();toTop();save();
+}
+function newEra(){
+  S.era++;S.eraSeason=1;S.eraTitles=0;S.rings=0;S.pts=0;S.rerolls=0;S.upg=UPG0();
+  S.seasonN++;S.roster=[];S.prospects=[];S.last=null;S.cur=null;
+  S.season=newSeason();S.pending=true;
+  showPick();renderAll();
+}
+function newState(){
+  S={v:2,titlesAll:0,hofUnlocked:false,name:DEF_M,fem:false,pending:true,pts:20,total:0,era:1,eraSeason:1,seasonN:1,rings:0,eraTitles:0,legends:[],history:[],speed:1,
+     upg:UPG0(),roster:[],prospects:[],rerolls:0,log:[],last:null,cur:null,timer:TICK,t:Date.now(),season:null};
+  S.roster=startRoster();S.prospects=genProspects();S.season=newSeason();
+  return S;
+}
+function save(){try{S.t=Date.now();localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}}
+function load(){
+  try{
+    const j=localStorage.getItem(SAVE_KEY);
+    if(j){const o=JSON.parse(j);
+      if(o&&o.v===2&&o.season&&o.roster){o.upg=Object.assign(UPG0(),o.upg);o.fem=!!o.fem;o.titlesAll=Math.max(o.titlesAll||0,o.rings||0);if(o.eraTitles!=null&&o.rings>o.eraTitles)o.rings=o.eraTitles;o.hofUnlocked=!!o.hofUnlocked||o.rings>=HOF_TITLES;o.pending=!!o.pending;return o;}}
+  }catch(e){}
+  return null;
+}
+
+/* ---------- avatars pixel ---------- */
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function avatar(p){
+  const h=hash(p.id);
+  const skin=['#f1c27d','#e0a96d','#c68642','#8d5524','#5c3a1e'][h%5];
+  const hair=['#111','#3b2314','#111','#7a4a21','#d9b13b'][(h>>3)%5];
+  const hs=(h>>6)%3;
+  let hairR;
+  if(S.fem)hairR=hs===0?'<rect x="3" y="0" width="6" height="2"/><rect x="2" y="2" width="1" height="6"/><rect x="9" y="2" width="1" height="6"/>':hs===1?'<rect x="2" y="0" width="8" height="3"/><rect x="2" y="3" width="1" height="4"/><rect x="9" y="3" width="1" height="4"/>':'<rect x="3" y="0" width="6" height="2"/><rect x="9" y="2" width="2" height="3"/>';
+  else hairR=hs===0?'<rect x="3" y="0" width="6" height="2"/>':hs===1?'<rect x="2" y="0" width="8" height="3"/>':'<rect x="3" y="1" width="6" height="1"/>';
+  return `<svg class="av" viewBox="0 0 12 14" aria-hidden="true">
+    <rect x="3" y="2" width="6" height="5" fill="${skin}"/><rect x="5" y="7" width="2" height="1" fill="${skin}"/>
+    <g fill="${hair}">${hairR}</g>
+    <rect x="4" y="4" width="1" height="1" fill="#000"/><rect x="7" y="4" width="1" height="1" fill="#000"/>
+    <rect x="2" y="8" width="8" height="6" fill="#e2231a"/><rect x="0" y="8" width="2" height="4" fill="${skin}"/><rect x="10" y="8" width="2" height="4" fill="${skin}"/>
+    <rect x="5" y="9" width="2" height="3" fill="#ffd21f"/>
+  </svg>`;
+}
+
+/* ---------- drapeaux ---------- */
+function flag(l,id){
+  if(l==='fr')return `<svg class="flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="1" height="2" fill="#0055A4"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#EF4135"/></svg>`;
+  return `<svg class="flag" viewBox="0 0 60 30" aria-hidden="true"><clipPath id="fs${id}"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="ft${id}"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#fs${id})"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#ft${id})" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></g></svg>`;
+}
+
+/* ---------- vues ---------- */
+const panel=(title,body)=>`<div class="panel"><h2 class="ph">${title}</h2><div class="pb">${body}</div></div>`;
+const labText=(l,old)=>!l?(old||''):l.k==='day'?T('day',l.n,G):T(l.k);
+function boardHtml(){
+  const se=S.season, c=S.cur, L=S.last, t=se.teams[0];
+  const head=c?`${T('seasonN',se.n)} · ${labText(c.lab,c.label)}`:`${T('seasonN',se.n)} · ${T('offseason')}`;
+  const last=L?T('lastMatch',L.win,L.sa,L.sb):T('noMatch');
+  return `<div class="panel board" id="board"><h2 class="ph">${esc(head)}</h2><div class="pb">
+    <div class="b-clock"><span class="b-qtr" id="bQtr">Q1</span><span class="b-time" id="bTime">48:00</span></div>
+    <div class="b-teams">
+      <div class="b-team"><span class="tn home">${esc(S.name)}</span><span class="sc" id="scA">0</span></div>
+      <span class="b-vs">VS</span>
+      <div class="b-team"><span class="tn">${esc(c?se.teams[c.opp].name:'—')}</span><span class="sc" id="scB">0</span></div>
+    </div>
+    <div class="b-last">${esc(last)}</div>
+    <div class="b-facts"><span>${T('f_rating')} <b>${C.rating.toFixed(1).replace('.',lang==='fr'?',':'.')}</b></span><span>${T('f_shot')} <b>+${fmt(C.click)}</b></span><span>${T('f_record')} <b>${T('rec',t.w,t.l)}</b></span><span>${T('f_titles')} <b>${S.rings}</b></span></div></div></div>`;
+}
+function updateBoard(){
+  const a=$('#scA');if(!a)return;
+  const c=S.cur;
+  if(!c){a.textContent='--';$('#scB').textContent='--';$('#bTime').textContent='--:--';$('#bQtr').textContent=T('qBreak');return;}
+  const prog=clamp(1-S.timer/TICK,0,1);
+  a.textContent=Math.floor(c.r.a*Math.pow(prog,.96));
+  $('#scB').textContent=Math.floor(c.r.b*Math.pow(prog,1.04));
+  const rem=Math.round((1-prog)*2880);
+  $('#bTime').textContent=String(Math.floor(rem/60)).padStart(2,'0')+':'+String(rem%60).padStart(2,'0');
+  $('#bQtr').textContent=prog>=1?T('qEnd'):'Q'+Math.min(4,Math.floor(prog*4)+1);
+}
+function plRow(p,mode,i){
+  const prod=pp(p.r)*mult();
+  const tags=(p.son?`<span class="tag">${T('sonOf')} ${esc(p.son.toUpperCase())}</span>`:'')+(p.hof?'<span class="tag">HOF</span>':'')+(p.rings?`<span class="tag">${T('ringsTag',p.rings)}</span>`:'');
+  let act;
+  if(mode==='prospect'){
+    const c=signCost(p);
+    act=`<button class="btn pri" data-act="sign" data-i="${i}" data-cost="${c}" data-block="${S.roster.length>=ROSTER_MAX?1:0}">${T('sign')} ${fmt(c)}</button>`;
+  }else act=`<button class="btn ghost" data-act="release" data-id="${p.id}">${T('release')}</button>`;
+  return `<article class="pl">${avatar(p)}
+    <div class="pl-id"><strong>${esc(nm(p))}${tags}</strong><small>${T('age',p.age)} · ${T('pot')} ${p.pot}</small><em>+${fmt(prod)} pts/s${mode==='prospect'?'':' · '+fmt(p.pts||0)+' '+T('scored')}</em></div>
+    <div class="pl-r"><span class="rt ${tier(p.r)}">${p.r}</span>${act}</div></article>`;
+}
+/* Insère le nouveau contenu avant de retirer l'ancien : la hauteur ne s'effondre jamais, le défilement reste en place. */
+function setHtml(el,html){
+  const old=Array.from(el.childNodes);
+  el.insertAdjacentHTML('beforeend',html);
+  old.forEach(n=>n.remove());
+}
+function renderInfo(){setHtml($('#info'),boardHtml());updateBoard();}
+function renderRoster(){
+  const list=S.roster.slice().sort((a,b)=>b.r-a.r);
+  const rows=list.map(p=>plRow(p,'roster')).join('')+Array.from({length:ROSTER_MAX-list.length},()=>`<div class="slot">${T('free')}</div>`).join('');
+  const rc=rerollCost();
+  const pros=S.prospects.map((p,i)=>plRow(p,'prospect',i)).join('')||`<p class="hint">${T('noProspect')}</p>`;
+  setHtml($('#sec-roster'),
+    panel(`${T('roster')} <small>${list.length}/${ROSTER_MAX}</small>`,`<div class="list">${rows}</div>`)+
+    panel(T('scouting'),`<div class="list">${pros}</div><button class="btn" data-act="reroll" data-cost="${rc}" data-block="0">${T('reroll',fmt(rc))}</button>`));
+}
+function renderClub(){
+  setHtml($('#sec-club'),panel(T('facilities'),`<div class="list">${UPG.map(u=>{
+    const l=S.upg[u.id], c=upCost(u), maxed=u.max&&l>=u.max;
+    return `<article class="up"><div><strong>${T('u_'+u.id)}</strong><span class="lvl">${T('lvl',l)}</span><p>${T('d_'+u.id,l)}</p></div>
+      <button class="btn pri" data-act="buy" data-u="${u.id}" data-cost="${c}" data-block="${maxed?1:0}">${maxed?T('max'):fmt(c)}</button></article>`;
+  }).join('')}</div>`));
+}
+function renderSeason(){
+  const se=S.season, order=ranked(se);
+  const rows=order.map((i,r)=>{const t=se.teams[i],d=t.pf-t.pa;
+    return `<tr class="${i===0?'me':''} ${r===3?'cut':''}"><td>${r+1}</td><td>${esc(i===0?S.name:t.name)}</td><td>${t.w}</td><td>${t.l}</td><td>${d>0?'+':''}${d}</td></tr>`;}).join('');
+  const next=se.phase==='reg'?se.sched.slice(se.game,se.game+4).map((i,k)=>`<li>${T('dayShort',se.game+k+1)} · ${esc(se.teams[i].name)}</li>`).join(''):'';
+  const status=se.phase==='off'&&se.champ!=null?T('champIs',se.teams[se.champ].name):se.phase==='po'?T('poOn'):T('poNote');
+  const logs=S.log.slice(0,12).map(e=>`<li class="${e.k}">${esc(e.key?T(e.key,...e.a):e.t)}</li>`).join('');
+  setHtml($('#sec-season'),
+    panel(`${T('standings')} <small>${T('seasonN',se.n)}</small>`,`<p class="hint">${status}</p><div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>${T('th_team')}</th><th>${T('th_w')}</th><th>${T('th_l')}</th><th>${T('th_d')}</th></tr></thead><tbody>${rows}</tbody></table></div>${next?`<ul class="log">${next}</ul>`:''}`)+
+    panel(T('journal'),`<ul class="log">${logs}</ul>`)+
+    panel(T('gameP'),`<div class="card"><p>${T('saveNote')}</p><button class="btn ghost" data-act="reset">${armed==='reset'?T('resetConfirm'):T('resetBtn')}</button></div>`));
+}
+function renderLegends(){
+  if(!hofOpen()){
+    const pct=Math.round(S.rings/HOF_TITLES*100);
+    setHtml($('#sec-legends'),panel(`${T('hof')} <small>${T('locked')}</small>`,`<div class="card"><p>${T('lockTxt',S.rings,HOF_TITLES)}</p><div class="meter"><i style="width:${pct}%"></i></div></div>`));
+    return;
+  }
+  const hof=S.legends.slice().reverse().slice(0,hofList?999:3).map(L=>{
+    const live=S.roster.find(x=>x.id===L.id);
+    const rings=live?live.rings:L.rings, pts=live?live.pts:L.pts, seasons=live?live.seasons+1:L.seasons;
+    return `<article><div><strong>${esc(L.first+' '+L.last)}</strong><br><small>${T('peakLine',L.peak,fmt(pts||0),seasons)}${live?' · '+T('active'):''}</small></div><span class="tag">${T('ringsTag',rings)}</span></article>`;
+  }).join('');
+  const hist=S.history.slice(-8).reverse().map(h=>{
+    const rk={Champion:'champ',Finaliste:'final','Demi-finale':'semi','Hors playoffs':'out'}[h.res]||h.res;
+    return `<li class="${rk==='champ'?'gold':''}">${esc(T('hist',h.n,T('res_'+rk),h.rec,h.champ))}</li>`;
+  }).join('');
+  const can=S.rings>=HOF_TITLES;
+  setHtml($('#sec-legends'),
+    panel(`${T('heritage')} <small>${T('heritSub',fmt(titleMult()*legacy()*eraMult()))}</small>`,
+      `<p class="hint">${T('heritTxt',S.rings,fmt(titleMult()),S.legends.length,S.era)}</p>`)+
+    panel(`${T('hof')} <button class="btn ghost" data-act="hoflist" aria-expanded="${hofList}" style="padding:4px 10px;min-height:30px;color:var(--yellow)">${S.legends.length} ${hofList?'▾':'▸'}</button>`,`<p class="hint">${T('hofRule',HOF_RINGS,fmt(HOF_PTS))}</p><div class="hof">${hof||`<p class="hint">${T('noLegend')}</p>`}</div>`)+
+    panel(T('palmares'),`<ul class="log">${hist||`<li>${T('noSeason')}</li>`}</ul>`)+
+    panel(T('eraTitle'),`<div class="card"><p>${T('eraTxt')}</p>
+      <button class="btn pri" data-act="era" ${can?'':'disabled'}>${armed==='era'?T('eraConfirm'):T('eraBtn')}</button>
+      ${can?'':`<p>${T('eraLock',Math.min(S.rings,HOF_TITLES),HOF_TITLES)}</p>`}</div>`)+goatPanel());
+}
+function goatPanel(){
+  const row=(k,v,g,f)=>`<div><div class="pl-id"><strong>${T(k)}</strong><small>${f(v)} / ${f(g)}</small></div><div class="meter"><i style="width:${Math.min(100,v/g*100)}%"></i></div></div>`;
+  const done=S.titlesAll>=GOAT.t&&S.legends.length>=GOAT.l&&S.total>=GOAT.p;
+  return panel(`${T('goat')} <small>${done?'★':''}</small>`,`<div class="card"><p>${done?T('goatDone'):T('goatTxt')}</p>`+
+    row('g_t',S.titlesAll,GOAT.t,fmt)+row('g_l',S.legends.length,GOAT.l,fmt)+row('g_p',S.total,GOAT.p,fmt)+`</div>`);
+}
+const TABS=['court','roster','club','season','legends'];
+function renderTabs(){
+  setHtml($('#tabs'),TABS.map(k=>{
+    const lock=k==='legends'&&!hofOpen(), key=k==='legends'?'tab_hof':'tab_'+k;
+    return `<button data-tab="${k}"${k===tab?' aria-current="page"':''}${lock?' aria-disabled="true"':''}>${lock?T(key)+' '+S.rings+'/'+HOF_TITLES:T(key)}</button>`;
+  }).join(''));
+  document.querySelectorAll('.sec').forEach(s=>s.classList.toggle('on',s.dataset.sec===tab));
+  $('#view').dataset.cur=tab;
+}
+function renderAll(){
+  const y=window.scrollY;
+  recalc();renderInfo();renderRoster();renderClub();renderSeason();renderLegends();renderTabs();updateLive();setHdr();
+  window.scrollTo(0,y);
+}
+function setHdr(){const r=document.documentElement.style;r.setProperty('--hdr',$('.top').offsetHeight+'px');r.setProperty('--tabsH',$('.tabs').offsetHeight+'px');}
+function toTop(){window.scrollTo(0,0);}
+function refreshAfford(){
+  document.querySelectorAll('[data-cost]').forEach(el=>{el.disabled=el.dataset.block==='1'||S.pts<+el.dataset.cost;});
+}
+function updateLive(){
+  $('#pts').textContent=fmt(S.pts);
+  $('#pps').textContent='+'+fmt(C.pps)+'/s';
+  $('#eraTag').textContent=T('eraTag',S.era,S.eraSeason);
+  updateBoard();
+  $('#bb').hidden=!bb.show;
+  const fire=performance.now()<fireUntil;
+  $('#fireTag').hidden=!fire;$('#shoot').classList.toggle('fire',fire);
+  document.querySelectorAll('[data-speed]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));
+  refreshAfford();
+}
+let tt=0;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3200);}
+function arm(id){armed=id;renderAll();clearTimeout(armT);armT=setTimeout(()=>{armed=null;renderAll();},3000);}
+function showPick(){applyStatic();$('#pick').hidden=false;setHdr();}
+
+/* ---------- langue ---------- */
+function applyStatic(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll('[data-i]').forEach(el=>{el.textContent=T(el.dataset.i);});
+  document.querySelectorAll('[data-i-aria]').forEach(el=>{el.setAttribute('aria-label',T(el.dataset.iAria));});
+  $('#langBtn').innerHTML=flag(lang,'b');
+  document.querySelectorAll('[data-lang]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.lang===lang)));
+}
+function setLang(l){
+  lang=l;try{localStorage.setItem(LANG_KEY,l);}catch(e){}
+  applyStatic();renderAll();
+}
+function closeMenu(){$('#langMenu').hidden=true;$('#langBtn').setAttribute('aria-expanded','false');}
+
+/* ---------- tir ---------- */
+function floatText(x,y,v){
+  const w=$('#courtWrap');
+  const f=document.createElement('div');f.className='float';f.textContent='+'+fmt(v);
+  w.appendChild(f);
+  const t0=`translate(${x}px,${y}px) translate(-50%,-50%)`;
+  f.style.transform=t0;
+  if(reduce){setTimeout(()=>f.remove(),500);return;}
+  const a=f.animate([{transform:t0,opacity:1},{transform:`translate(${x}px,${y-36}px) translate(-50%,-50%)`,opacity:0}],{duration:650,easing:'ease-out'});
+  a.onfinish=()=>f.remove();
+}
+function shoot(){
+  const now=performance.now();
+  if(now<fireUntil)streak=0;
+  else{
+    streak=(now-lastTap<700)?streak+1:1;
+    if(streak>=10){fireUntil=now+6000+2000*S.upg.mascot;streak=0;}
+  }
+  lastTap=now;
+  recalc();
+  const v=C.click;gain(v);
+  const w=$('#courtWrap'),btn=$('#shoot'),hp=$('#hoop');
+  const W=w.getBoundingClientRect(),B=btn.getBoundingClientRect(),H=hp.getBoundingClientRect();
+  const sx=B.left+B.width/2-W.left,sy=B.top+B.height/2-W.top,ex=H.left-W.left,ey=H.top-W.top;
+  if(reduce||w.querySelectorAll('.fly').length>5){floatText(ex,ey+24,v);return;}
+  const f=document.createElement('div');f.className='fly';w.appendChild(f);
+  const mx=(sx+ex)/2+rnd(-24,24),my=Math.min(sy,ey)-40;
+  const a=f.animate([
+    {transform:`translate(${sx}px,${sy}px) translate(-50%,-50%) scale(1)`},
+    {transform:`translate(${mx}px,${my}px) translate(-50%,-50%) scale(.85)`,offset:.5},
+    {transform:`translate(${ex}px,${ey}px) translate(-50%,-50%) scale(.6)`}
+  ],{duration:480,easing:'cubic-bezier(.3,.6,.5,1)'});
+  a.onfinish=()=>{f.remove();floatText(ex,ey+24,v);};
+}
+
+/* ---------- actions ---------- */
+function act(a,el){
+  switch(a){
+    case 'lang':{const m=$('#langMenu');m.hidden=!m.hidden;$('#langBtn').setAttribute('aria-expanded',String(!m.hidden));break;}
+    case 'shoot':shoot();updateLive();break;
+    case 'bb':{
+      recalc();
+      const g=C.pps*40+C.click*5;gain(g);bb.show=false;bb.next=performance.now()+rnd(60000,110000);
+      el.hidden=true;toast(T('T_beater',fmt(g).toUpperCase()));updateLive();break;
+    }
+    case 'sign':{
+      const i=+el.dataset.i,p=S.prospects[i];if(!p)return;
+      const c=signCost(p);
+      if(S.roster.length>=ROSTER_MAX){toast(T('T_full'));return;}
+      if(S.pts<c)return;
+      S.pts-=c;S.roster.push(p);S.prospects.splice(i,1);
+      log('L_sign',[nm(p)],'good');toast(T('T_signs',nm(p).toUpperCase()));renderAll();break;
+    }
+    case 'reroll':{
+      const c=rerollCost();if(S.pts<c)return;
+      S.pts-=c;S.rerolls++;S.prospects=genProspects();renderAll();break;
+    }
+    case 'release':{
+      const id=el.dataset.id;
+      if(S.roster.length<=1){toast(T('T_keep'));return;}
+      const p=S.roster.find(x=>x.id===id);
+      S.roster=S.roster.filter(x=>x.id!==id);
+      if(p)log('L_release',[nm(p)]);
+      renderAll();break;
+    }
+    case 'buy':{
+      const u=UPG.find(x=>x.id===el.dataset.u);if(!u)return;
+      const c=upCost(u);if(S.pts<c)return;
+      S.pts-=c;S.upg[u.id]++;renderAll();break;
+    }
+    case 'hoflist':hofList=!hofList;renderLegends();break;
+    case 'era':
+      if(armed!=='era'){arm('era');return;}
+      armed=null;newEra();break;
+    case 'reset':
+      if(armed!=='reset'){arm('reset');return;}
+      armed=null;try{localStorage.removeItem(SAVE_KEY);}catch(e){}
+      newState();tab='court';showPick();renderAll();toTop();break;
+  }
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.lang'))closeMenu();
+  const pk=e.target.closest('[data-pick]');
+  if(pk){startCareer(pk.dataset.pick==='f');return;}
+  const lg=e.target.closest('[data-lang]');
+  if(lg){setLang(lg.dataset.lang);closeMenu();return;}
+  const tb=e.target.closest('[data-tab]');
+  if(tb){const k=tb.dataset.tab;if(k==='legends'&&!hofOpen()){toast(T('T_hofLocked',S.rings,HOF_TITLES));return;}tab=k;renderTabs();toTop();return;}
+  const sp=e.target.closest('[data-speed]');
+  if(sp){S.speed=+sp.dataset.speed;updateLive();return;}
+  const el=e.target.closest('[data-act]');
+  if(!el||el.disabled)return;
+  act(el.dataset.act,el);
+});
+$('#teamName').addEventListener('input',e=>{
+  S.name=e.target.value.trim()||(S.fem?DEF_F:DEF_M);
+  S.season.teams[0].name=S.name;
+});
+
+/* ---------- boucle ---------- */
+function away(sec){
+  recalc();
+  const g=C.pps*Math.min(sec,7200)*0.5;gain(g);
+  if(sec>20)toast(T('T_away',fmt(g).toUpperCase()));
+}
+let lastT=performance.now(),acc=0,saveAcc=0;
+function frame(){
+  const now=performance.now();
+  let dt=(now-lastT)/1000;lastT=now;
+  if(S.pending)return;
+  if(dt>3){away(dt);dt=0.1;}
+  dt*=S.speed;
+  recalc();
+  gain(C.pps*dt);
+  {const m=mult()*dt;S.roster.forEach(p=>{p.pts=(p.pts||0)+pp(p.r)*m;});}
+  S.timer-=dt;
+  if(S.timer<=0){S.timer=TICK;playTick();}
+  if(!bb.show&&now>bb.next){bb.show=true;bb.until=now+9000;}
+  else if(bb.show&&now>bb.until){bb.show=false;bb.next=now+rnd(50000,100000);}
+  acc+=dt;if(acc>0.25*S.speed){acc=0;checkHof();updateLive();}
+  saveAcc+=dt;if(saveAcc>5*S.speed){saveAcc=0;save();}
+}
+
+/* ---------- démarrage ---------- */
+S=load()||newState();
+if(![1,2,3,5].includes(S.speed))S.speed=1;
+$('#langMenu').innerHTML=`<button data-lang="fr">${flag('fr','m1')}<span>Français</span></button><button data-lang="en">${flag('en','m2')}<span>English</span></button>`;
+applyStatic();
+$('#teamName').value=S.name;
+recalc();
+if(!S.cur&&S.season.phase!=='off')prepNext();
+if(!S.pending){const d=(Date.now()-S.t)/1000;if(d>30){const g=C.pps*Math.min(d,7200)*0.5;gain(g);setTimeout(()=>toast(T('T_away',fmt(g).toUpperCase())),500);}}
+renderAll();
+if(S.pending)showPick();
+setInterval(frame,100);
+window.addEventListener('resize',setHdr);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(setHdr);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&!S.pending)save();});
+window.addEventListener('pagehide',()=>{if(!S.pending)save();});
+})();
+</script>
