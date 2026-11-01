@@ -177,6 +177,17 @@ button{font:inherit;color:inherit}
   .rs{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
   #sec-season{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
   #sec-season>.panel:nth-child(3){grid-column:1/-1}
+  .list{gap:6px}
+  .pl{grid-template-columns:36px minmax(0,1fr) auto;gap:8px;padding:4px 6px}
+  .av{width:36px;height:42px}
+  .pl-id{display:block}
+  .pl-id strong{display:block;font-size:14px;line-height:1.15}
+  .pl-id small,.pl-id em{display:inline;font-size:12px;line-height:1.2;white-space:nowrap}
+  .pl:not(.has-rings) .mq{display:none}
+  .pl-id em::before{content:" · ";color:var(--mute)}
+  .pl-r{display:flex;align-items:center;gap:8px}
+  .rt{font-size:23px}
+  .pl .btn{min-height:30px;padding:6px 8px;font-size:13px}
   .col{display:grid;gap:20px;align-content:start;min-width:0}
 }
 @media (min-width:1280px){
@@ -282,7 +293,7 @@ fr:{
   pickTitle:'Nouvelle carrière',pickHint:'Choisis ton équipe.',pickM:'Équipe masculine',pickF:'Équipe féminine',
   eraTag:(e,s)=>`ÈRE ${e} · SAISON ${s}`,
   tab_court:'Terrain',tab_roster:'Effectif',tab_club:'Club',tab_season:'Saison',tab_hof:'HOF',
-  age:n=>`${n} ans`,pot:'potentiel',scored:'marqués',free:'PLACE LIBRE',release:'Libérer',sign:'Signer',
+  age:n=>`${n} ans`,pot:'pot.',scored:'marqués',free:'PLACE LIBRE',release:'Libérer',sign:'Signer',
   sonOf:['FILS DE','FILLE DE'],ringsTag:n=>`${n} BAGUE${n>1?'S':''}`,
   roster:'Effectif',scouting:'Détection',noProspect:'Plus aucun profil. Relance une détection.',reroll:c=>`Nouvelle détection ${c}`,
   facilities:'Installations',lvl:n=>`NIV ${n}`,max:'Max',
@@ -338,7 +349,7 @@ en:{
   pickTitle:'New career',pickHint:'Choose your team.',pickM:"Men's team",pickF:"Women's team",
   eraTag:(e,s)=>`ERA ${e} · SEASON ${s}`,
   tab_court:'Court',tab_roster:'Roster',tab_club:'Club',tab_season:'Season',tab_hof:'HOF',
-  age:n=>`${n} yrs`,pot:'potential',scored:'scored',free:'FREE SLOT',release:'Release',sign:'Sign',
+  age:n=>`${n} yrs`,pot:'pot.',scored:'scored',free:'FREE SLOT',release:'Release',sign:'Sign',
   sonOf:['SON OF','DAUGHTER OF'],ringsTag:n=>`${n} RING${n>1?'S':''}`,
   roster:'Roster',scouting:'Scouting',noProspect:'No prospects left. Scout again.',reroll:c=>`New scouting ${c}`,
   facilities:'Facilities',lvl:n=>`LVL ${n}`,max:'Max',
@@ -723,8 +734,8 @@ function plRow(p,mode,i){
     const c=signCost(p);
     act=`<button class="btn pri" data-act="sign" data-i="${i}" data-cost="${c}" data-block="${S.roster.length>=slotsMax()?1:0}">${T('sign')} ${fmt(c)}</button>`;
   }else act=`<button class="btn ghost" data-act="release" data-id="${p.id}">${T('release')}</button>`;
-  return `<article class="pl">${avatar(p)}
-    <div class="pl-id"><strong>${esc(nm(p))}${tags}</strong><small>${T('age',p.age)} · ${T('pot')} ${p.pot}</small><em>+${fmt(prod)} pts/s${mode==='prospect'?'':' · '+fmt(p.pts||0)+' '+T('scored')}</em></div>
+  return `<article class="pl${p.rings?' has-rings':''}">${avatar(p)}
+    <div class="pl-id"><strong>${esc(nm(p))}${tags}</strong><small>${T('age',p.age)} · ${T('pot')} ${p.pot}</small><em>+${fmt(prod)} pts/s${mode==='prospect'?'':'<span class="mq"> · '+fmt(p.pts||0)+' '+T('scored')+'</span>'}</em></div>
     <div class="pl-r"><span class="rt ${tier(p.r)}">${p.r}</span>${act}</div></article>`;
 }
 /* Insère le nouveau contenu avant de retirer l'ancien : la hauteur ne s'effondre jamais, le défilement reste en place. */
