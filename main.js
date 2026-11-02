@@ -221,7 +221,7 @@
   const slotsMax = () => Math.min(ROSTER_MAX, 5 + S.upg.slots);
   const hofOpen = () => S.hofUnlocked || S.rings >= HOF_TITLES;
   const TURBO_SEASON = 4; // saison de chaque ère à partir de laquelle x10 est disponible
-  const GOAT = { t: 100, l: 100, p: 1e10 };
+  const GOAT = { t: 100, l: 100, p: 1e11 };
 
   const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -1303,6 +1303,28 @@
     };
   }
 
+  /** Copie un texte sans ouvrir le clavier : API presse-papiers, sinon textarea readonly hors écran. */
+  async function copyText(txt) {
+    try {
+      await navigator.clipboard.writeText(txt);
+      return true;
+    } catch (e) {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = txt;
+      ta.readOnly = true;
+      ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, txt.length);
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /* ---------- actions ---------- */
   function act(a, el) {
     switch (a) {
@@ -1378,28 +1400,11 @@
       }
       case "export": {
         save();
-        saveVal = "BD2:" + btoa(unescape(encodeURIComponent(JSON.stringify(S))));
-        renderSeason();
-        const b = $("#saveBox");
-        if (b) {
-          b.focus();
-          b.select();
-          b.setSelectionRange(0, b.value.length); // iOS : select() seul ne prend pas tout le texte
-        }
-        let ok = false;
-        try {
-          navigator.clipboard.writeText(saveVal).then(
-            () => toast(T("sv_copied")),
-            () => toast(T("sv_made")),
-          );
-          ok = true;
-        } catch (e) {
-          try {
-            ok = document.execCommand("copy");
-            if (ok) toast(T("sv_copied"));
-          } catch (e2) {}
-        }
-        if (!ok) toast(T("sv_made"));
+        const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+        // Le suffixe ~n permet de détecter un code coupé au collage.
+        saveVal = "BD2:" + b64 + "~" + b64.length;
+        renderSeason(); // affiche le code, sans donner le focus (pas de clavier sur mobile)
+        copyText(saveVal).then((ok) => toast(T(ok ? "sv_copied" : "sv_made")));
         break;
       }
       case "import": {
@@ -1410,8 +1415,14 @@
         if (v) {
           try {
             // Tolérant : retire le préfixe, les espaces, guillemets ou retours à la ligne ajoutés au collage.
+            const tail = v.match(/~(\d+)\s*["']?\s*$/);
+            if (tail) v = v.slice(0, tail.index);
             v = v.replace(/^[^A-Za-z0-9+/=]*(BD2:)?/, "").replace(/[^A-Za-z0-9+/=]/g, "");
             why = "base64, " + v.length + " car.";
+            if (tail && +tail[1] !== v.length) {
+              why = "code incomplet : " + v.length + "/" + tail[1] + " car.";
+              throw new Error(why);
+            }
             const bin = atob(v);
             why = "texte, " + bin.length + " oct.";
             const json = decodeURIComponent(escape(bin));
