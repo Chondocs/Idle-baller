@@ -185,6 +185,10 @@ function buildDict({ fmt, ord }) {
       g_l: ["Légendes", "Légendes"],
       g_p: "Points marqués",
       goatDone: "GOAT ! Tu as tout accompli.",
+      coffeeTitle: "Soutenir le jeu",
+      coffeeTxt:
+        "Buzzer Dynasty est gratuit et sans pub. Si le jeu te plaît, tu peux m'offrir un café, ça fait toujours plaisir !",
+      coffeeBtn: "Buy me a coffee",
     },
     en: {
       friendly: "Friendly",
@@ -354,6 +358,10 @@ function buildDict({ fmt, ord }) {
       g_l: "Legends",
       g_p: "Points scored",
       goatDone: "GOAT! You achieved everything.",
+      coffeeTitle: "Support the game",
+      coffeeTxt:
+        "Buzzer Dynasty is free and ad-free. If you enjoy it, you can buy me a coffee, it's always appreciated!",
+      coffeeBtn: "Buy me a coffee",
     },
   };
 }
