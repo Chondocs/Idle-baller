@@ -855,7 +855,7 @@
           if (!o.un) o.un = { roster: true, club: true, season: true };
           o.fem = !!o.fem;
           // Anciennes légendes sans ère : celles encore dans l'effectif datent de l'ère en cours
-          // (l'effectif est vidé à chaque ère), les autres sont "jusqu'à l'ère en cours".
+          // (l'effectif est vidé à chaque ère), les autres sont affichées « Ère pré-merge ».
           (o.legends || []).forEach((L) => {
             if (L.era || L.eraMax) return;
             if (o.roster.some((p) => p.id === L.id)) L.era = o.era;
