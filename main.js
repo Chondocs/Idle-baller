@@ -1303,6 +1303,34 @@
     };
   }
 
+  /**
+   * Décode un code de sauvegarde collé par l'utilisateur.
+   * Tolère les espaces, guillemets, codes collés à la suite et caractères parasites au début ou
+   * à la fin : la longueur annoncée après "~" permet de retrouver le bon morceau.
+   * @returns {{save: object|null, why: string}} la sauvegarde, ou la raison de l'échec
+   */
+  function parseSave(raw) {
+    if (!raw) return { save: null, why: "vide" };
+    const at = raw.lastIndexOf("BD2:");
+    let v = at >= 0 ? raw.slice(at + 4) : raw;
+    const tail = v.match(/~(\d+)\s*["']?\s*$/);
+    if (tail) v = v.slice(0, tail.index);
+    const pad = (v.match(/=*\s*$/) || [""])[0].replace(/\s/g, "").length;
+    v = v.replace(/[^A-Za-z0-9+/]/g, "");
+    const want = tail ? +tail[1] - pad : 0;
+    const cands = [v];
+    if (tail && v.length > want) cands.push(v.slice(v.length - want), v.slice(0, want));
+    for (const c of cands) {
+      try {
+        const o = JSON.parse(decodeURIComponent(escape(atob(c))));
+        if (o && o.v === 2 && o.season && o.roster) return { save: o, why: "" };
+      } catch (e) {}
+    }
+    if (tail && v.length < want)
+      return { save: null, why: `incomplet : ${v.length + pad}/${tail[1]} car.` };
+    return { save: null, why: `illisible, ${v.length + pad} car.` };
+  }
+
   /** Copie un texte sans ouvrir le clavier : API presse-papiers, sinon textarea readonly hors écran. */
   async function copyText(txt) {
     try {
@@ -1409,33 +1437,8 @@
       }
       case "import": {
         const b = $("#saveBox");
-        let v = ((b && b.value) || saveVal).trim();
-        let o = null;
-        let why = "vide";
-        if (v) {
-          try {
-            // Tolérant : retire le préfixe, les espaces, guillemets ou retours à la ligne ajoutés au collage.
-            // Si plusieurs codes sont collés l'un après l'autre, on garde le dernier.
-            const at = v.lastIndexOf("BD2:");
-            if (at >= 0) v = v.slice(at + 4);
-            const tail = v.match(/~(\d+)\s*["']?\s*$/);
-            if (tail) v = v.slice(0, tail.index);
-            const pad = (v.match(/=*\s*$/) || [""])[0].replace(/\s/g, "").length;
-            v = v.replace(/[^A-Za-z0-9+/]/g, ""); // le remplissage "=" est facultatif pour atob
-            why = "base64, " + (v.length + pad) + " car.";
-            if (tail && +tail[1] !== v.length + pad) {
-              why = "code incomplet : " + (v.length + pad) + "/" + tail[1] + " car.";
-              throw new Error(why);
-            }
-            const bin = atob(v);
-            why = "texte, " + bin.length + " oct.";
-            const json = decodeURIComponent(escape(bin));
-            why = "json, " + json.length + " car.";
-            o = JSON.parse(json);
-            why = "format";
-          } catch (e) {}
-        }
-        if (!o || o.v !== 2 || !o.season || !o.roster) {
+        const { save: o, why } = parseSave(((b && b.value) || saveVal).trim());
+        if (!o) {
           toast(T("sv_bad") + " (" + why + ")");
           return;
         }
