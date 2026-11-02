@@ -15,8 +15,8 @@ function buildDict({ fmt, ord }) {
       popOk: "Compris",
       pop_roster_t: "Effectif débloqué !",
       pop_roster_b: [
-        "Tu as 5 joueurs de note 20. Chacun marque des points tout seul : plus sa note est haute, plus il rapporte. Ils jouent des matchs amicaux sur le tableau d'affichage, sans enjeu. Signe de meilleurs joueurs dans « Détection ».",
-        "Tu as 5 joueuses de note 20. Chacune marque des points toute seule : plus sa note est haute, plus elle rapporte. Elles jouent des matchs amicaux sur le tableau d'affichage, sans enjeu. Signe de meilleures joueuses dans « Détection ».",
+        "Tu as 5 joueurs de note 25. Chacun marque des points tout seul : plus sa note est haute, plus il rapporte. Ils jouent des matchs amicaux sur le tableau d'affichage, sans enjeu. Signe de meilleurs joueurs dans « Détection ».",
+        "Tu as 5 joueuses de note 25. Chacune marque des points toute seule : plus sa note est haute, plus elle rapporte. Elles jouent des matchs amicaux sur le tableau d'affichage, sans enjeu. Signe de meilleures joueuses dans « Détection ».",
       ],
       pop_club_t: "Club débloqué !",
       pop_club_b:
@@ -200,7 +200,7 @@ function buildDict({ fmt, ord }) {
       popOk: "Got it",
       pop_roster_t: "Roster unlocked!",
       pop_roster_b:
-        'You have 5 players rated 20. Each one scores points on their own: the higher the rating, the more they earn. They play friendly games on the scoreboard, with nothing at stake. Sign better players in "Scouting".',
+        'You have 5 players rated 25. Each one scores points on their own: the higher the rating, the more they earn. They play friendly games on the scoreboard, with nothing at stake. Sign better players in "Scouting".',
       pop_club_t: "Club unlocked!",
       pop_club_b:
         "Facilities improve your shots, production and recruiting. Some (Video analyst, Fan club) only matter for the season and stay blurred for now.",
