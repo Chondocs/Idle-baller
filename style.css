@@ -230,7 +230,8 @@ button {
 }
 .speed {
   display: grid;
-  grid-template-columns: repeat(5, 36px);
+  grid-auto-flow: column;
+  grid-auto-columns: 36px;
   gap: 5px;
 }
 .speed button {
@@ -257,7 +258,7 @@ button {
     justify-content: end;
   }
   .speed.open {
-    grid-template-columns: repeat(5, 36px);
+    grid-template-columns: none;
   }
   .speed:not(.open) button[aria-pressed="false"] {
     display: none;
