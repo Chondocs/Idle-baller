@@ -656,6 +656,7 @@
           pts: Math.round(p.pts),
           seasons: p.seasons + 1,
           egg: p.egg,
+          era: S.era,
         });
         log("L_hofIn", [nm(p)], "gold");
         toast(T("T_hofIn", nm(p).toUpperCase()));
@@ -853,6 +854,13 @@
           }
           if (!o.un) o.un = { roster: true, club: true, season: true };
           o.fem = !!o.fem;
+          // Anciennes légendes sans ère : celles encore dans l'effectif datent de l'ère en cours
+          // (l'effectif est vidé à chaque ère), les autres sont "jusqu'à l'ère en cours".
+          (o.legends || []).forEach((L) => {
+            if (L.era || L.eraMax) return;
+            if (o.roster.some((p) => p.id === L.id)) L.era = o.era;
+            else L.eraMax = o.era;
+          });
           o.roster.forEach((p) => {
             if (p.pot < p.r) p.pot = p.r; // anciennes sauvegardes : potentiel dépassé
           });
@@ -1117,7 +1125,7 @@
         const rings = live ? live.rings : L.rings,
           pts = live ? live.pts : L.pts,
           seasons = live ? live.seasons + 1 : L.seasons;
-        return `<article><div><strong>${esc(L.first + " " + L.last)}</strong><br><small>${T("peakLine", live ? live.peak : L.peak, fmt(pts || 0), seasons)}${live ? " · " + T("active") : ""}</small></div><span class="tag">${T("ringsTag", rings)}</span></article>`;
+        return `<article><div><strong>${esc(L.first + " " + L.last)}</strong><br><small>${L.era ? T("eraOf", L.era) : T("eraUpTo", L.eraMax)} · ${T("peakLine", live ? live.peak : L.peak, fmt(pts || 0), seasons)}${live ? " · " + T("active") : ""}</small></div><span class="tag">${T("ringsTag", rings)}</span></article>`;
       })
       .join("");
     const hist = S.history
