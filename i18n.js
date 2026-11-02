@@ -152,12 +152,8 @@ function buildDict({ fmt, ord }) {
       heritSub: (m) => `x${m} sur la production`,
       heritTxt: (rings, tm, leg, era) =>
         `${rings} titre${rings > 1 ? "s" : ""} dans cette ère (x1,5 chacun, soit x${tm}), ${leg} légende${leg > 1 ? "s" : ""} (+10 % chacune), ère ${era}.`,
-      hofRule: [
-        (r, p) =>
-          `Entrée dès qu'un joueur a au moins ${r} bagues avec le club et ${p} pts marqués en carrière, sans attendre sa retraite. Une légende peut revenir en draft sous la forme de son fils.`,
-        (r, p) =>
-          `Entrée dès qu'une joueuse a au moins ${r} bagues avec le club et ${p} pts marqués en carrière, sans attendre sa retraite. Une légende peut revenir en draft sous la forme de sa fille.`,
-      ],
+      hofRule: (r, p) =>
+        `Entrée dès qu'un joueur ou une joueuse a au moins ${r} bagues avec le club et ${p} pts marqués en carrière, sans attendre la retraite. Une légende peut revenir en draft sous la forme de son fils ou de sa fille.`,
       noLegend: "Aucune légende pour l'instant.",
       palmares: "Palmarès",
       noSeason: "Aucune saison terminée.",
@@ -170,7 +166,7 @@ function buildDict({ fmt, ord }) {
       res_out: "Hors playoffs",
       eraTitle: "Nouvelle ère",
       eraTxt:
-        "Repars de zéro : effectif, installations, points et titres remis à zéro (le bonus x1,5 par titre repart de 0). Tu gardes tes légendes et gagnes +25 % de production permanent. Tu choisis ensuite une nouvelle équipe.",
+        "Repars de zéro : effectif, installations, points et titres remis à zéro (le bonus x1,5 par titre repart de 0). Tu gardes tes légendes et gagnes +50 % de production permanent. Tu choisis ensuite une nouvelle équipe.",
       sv_exp: "Exporter",
       sv_imp: "Importer",
       sv_ph: "Colle ici un code de sauvegarde, puis appuie sur Importer.",
@@ -339,7 +335,7 @@ function buildDict({ fmt, ord }) {
       res_out: "Missed playoffs",
       eraTitle: "New era",
       eraTxt:
-        "Start over: roster, facilities, points and titles reset to zero (the x1.5 per title bonus restarts from 0). You keep your legends and gain +25% permanent production. You then choose a new team.",
+        "Start over: roster, facilities, points and titles reset to zero (the x1.5 per title bonus restarts from 0). You keep your legends and gain +50% permanent production. You then choose a new team.",
       sv_exp: "Export",
       sv_imp: "Import",
       sv_ph: "Paste a save code here, then press Import.",
