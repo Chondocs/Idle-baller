@@ -662,6 +662,23 @@ button {
   min-height: 38px;
   text-transform: uppercase;
 }
+a.btn {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+.coffee {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.coffee .cup {
+  width: 22px;
+  height: 22px;
+  image-rendering: pixelated;
+}
 .btn:active {
   transform: translate(2px, 2px);
   box-shadow: none;
