@@ -220,7 +220,8 @@
   });
   const slotsMax = () => Math.min(ROSTER_MAX, 5 + S.upg.slots);
   const hofOpen = () => S.hofUnlocked || S.rings >= HOF_TITLES;
-  const GOAT = { t: 100, l: 100, p: 1e11 };
+  const TURBO_SEASON = 4; // saison de chaque ère à partir de laquelle x10 est disponible
+  const GOAT = { t: 100, l: 100, p: 1e10 };
 
   const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -346,7 +347,7 @@
   const pp = (r) => DIFF * 0.033 * Math.pow(r / 10, 3);
   const legacy = () => 1 + S.legends.length * 0.1;
   const titleMult = () => Math.pow(1.5, S.rings);
-  const eraMult = () => 1 + 0.25 * (S.era - 1);
+  const eraMult = () => 1 + 0.5 * (S.era - 1);
   const mult = () => (1 + 0.12 * S.upg.coach) * titleMult() * legacy() * eraMult();
   const flat = () => BASE_PPS + (S.upg.arena ? DIFF * 3 * Math.pow(S.upg.arena, 1.25) : 0);
   function recalc() {
@@ -1175,6 +1176,9 @@
     const fire = performance.now() < fireUntil;
     $("#fireTag").hidden = !fire;
     $("#shoot").classList.toggle("fire", fire);
+    const x10 = S.eraSeason >= TURBO_SEASON;
+    $('[data-speed="10"]').hidden = !x10;
+    if (!x10 && S.speed === 10) S.speed = 5;
     document
       .querySelectorAll("[data-speed]")
       .forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.speed === S.speed)));
@@ -1575,7 +1579,7 @@
 
   /* ---------- démarrage ---------- */
   S = load() || newState();
-  if (![1, 2, 3, 5].includes(S.speed)) S.speed = 1;
+  if (![1, 2, 3, 5, 10].includes(S.speed)) S.speed = 1;
   $("#langMenu").innerHTML =
     `<button data-lang="fr">${flag("fr", "m1")}<span>Français</span></button><button data-lang="en">${flag("en", "m2")}<span>English</span></button>`;
   applyStatic();
