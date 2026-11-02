@@ -219,7 +219,7 @@
     mascot: 0,
   });
   const slotsMax = () => Math.min(ROSTER_MAX, 5 + S.upg.slots);
-  const hofOpen = () => S.hofUnlocked || S.rings >= HOF_TITLES;
+  const hofOpen = () => S.hofUnlocked || S.rings >= HOF_TITLES || S.legends.length > 0;
   const TURBO_SEASON = 4; // saison de chaque ère à partir de laquelle x10 est disponible
   const GOAT = { t: 100, l: 100, p: 1e11 };
 
@@ -633,6 +633,7 @@
     S.roster.forEach((p) => {
       if (!p.hof && p.rings >= HOF_RINGS && (p.pts || 0) >= HOF_PTS) {
         p.hof = true;
+        S.hofUnlocked = true; // la première entrée au Hall of Fame débloque l'onglet pour de bon
         any = true;
         S.legends.push({
           id: p.id,
@@ -845,7 +846,7 @@
           if (o.aiBoost == null) o.aiBoost = Math.min(30, 1.5 * ((o.eraSeason || 1) - 1));
           o.titlesAll = Math.max(o.titlesAll || 0, o.rings || 0);
           if (o.eraTitles != null && o.rings > o.eraTitles) o.rings = o.eraTitles;
-          o.hofUnlocked = !!o.hofUnlocked || o.rings >= HOF_TITLES;
+          o.hofUnlocked = !!o.hofUnlocked || o.rings >= HOF_TITLES || (o.legends || []).length > 0;
           o.pending = !!o.pending;
           return o;
         }
