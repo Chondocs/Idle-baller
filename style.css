@@ -662,6 +662,24 @@ button {
   min-height: 38px;
   text-transform: uppercase;
 }
+.legal {
+  margin: 20px 4px 4px;
+  color: var(--mute);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+.legal p {
+  margin: 0 0 6px;
+}
+.legal summary {
+  cursor: pointer;
+  text-decoration: underline;
+  margin-bottom: 6px;
+}
+.legal details p {
+  text-align: left;
+}
 a.btn {
   display: block;
   text-align: center;
