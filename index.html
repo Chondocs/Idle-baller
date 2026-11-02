@@ -173,22 +173,23 @@ button{font:inherit;color:inherit}
   #sec-court.on{grid-template-rows:none;gap:16px}
   .top{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"id bank speed";gap:10px 28px}
   .sec{display:grid}
-  .cols{grid-template-columns:minmax(340px,400px) minmax(0,1fr);gap:20px;align-items:start}
+  .cols{grid-template-columns:minmax(340px,400px) minmax(0,1fr);grid-template-areas:"court roster" "club club" "season season" "legends legends";gap:20px;align-items:start}
+  #sec-court{grid-area:court}#sec-roster{grid-area:roster}#sec-club{grid-area:club}#sec-season{grid-area:season}#sec-legends{grid-area:legends}
   .rs{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
-  #sec-season{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
-  #sec-season>.panel:nth-child(3){grid-column:1/-1}
+  #sec-season,#sec-legends{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start}
+  #sec-club .list{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
   .list{gap:6px}
   .pl{grid-template-columns:36px minmax(0,1fr) auto;gap:8px;padding:4px 6px}
   .av{width:36px;height:42px}
   .pl-id{display:block}
   .pl-id strong{display:block;font-size:14px;line-height:1.15}
-  .pl-id small,.pl-id em{display:inline;font-size:12px;line-height:1.2;white-space:nowrap}
+  .pl-id small,.pl-id em{display:inline;font-size:12px;line-height:1.2}
   .pl:not(.has-rings) .mq{display:none}
   .pl-id em::before{content:" · ";color:var(--mute)}
   .pl-r{display:flex;align-items:center;gap:8px}
   .rt{font-size:23px}
   .pl .btn{min-height:30px;padding:6px 8px;font-size:13px}
-  .col{display:grid;gap:20px;align-content:start;min-width:0}
+  .col{display:contents}
 }
 @media (min-width:1280px){
   #app>*{max-width:1680px}
@@ -501,12 +502,12 @@ function gain(g){S.pts+=g;S.total+=g;}
 
 /* ---------- ligue ---------- */
 function newSeason(){
-  const L=Math.min(92,34+5*(S.eraSeason-1));
   const teams=[{name:S.name,w:0,l:0,pf:0,pa:0,ovr:0}];
-  (S.fem?TEAMS_F:TEAMS_M).forEach(n=>teams.push({name:n,w:0,l:0,pf:0,pa:0,ovr:Math.round(L+rnd(-7,7))}));
-  return {n:S.seasonN,phase:'reg',game:0,sched:shuffle([1,2,3,4,5,6,7,1,2,3,4,5,6,7]),teams,po:null,champ:null};
+  (S.fem?TEAMS_F:TEAMS_M).forEach(n=>teams.push({name:n,w:0,l:0,pf:0,pa:0,ovr:rnd(-7,7)}));
+  return {off:true,n:S.seasonN,phase:'reg',game:0,sched:shuffle([1,2,3,4,5,6,7,1,2,3,4,5,6,7]),teams,po:null,champ:null};
 }
-const teamR=i=>i===0?C.rating:S.season.teams[i].ovr;
+const aiLevel=()=>Math.min(95,Math.max(34+6*(S.eraSeason-1),0.92*C.rating));
+const teamR=i=>i===0?C.rating:aiLevel()+S.season.teams[i].ovr;
 function simGame(ra,rb){
   const aWin=Math.random()<1/(1+Math.exp(-(ra-rb)/5));
   const base=Math.round(74+(ra+rb)/2*0.2+rnd(-5,7));
@@ -668,7 +669,7 @@ function load(){
   try{
     const j=localStorage.getItem(SAVE_KEY);
     if(j){const o=JSON.parse(j);
-      if(o&&o.v===2&&o.season&&o.roster){o.upg=Object.assign(UPG0(),o.upg);if(o.upg&&o.upg.slots===undefined)o.upg.slots=5;o.fem=!!o.fem;o.titlesAll=Math.max(o.titlesAll||0,o.rings||0);if(o.eraTitles!=null&&o.rings>o.eraTitles)o.rings=o.eraTitles;o.hofUnlocked=!!o.hofUnlocked||o.rings>=HOF_TITLES;o.pending=!!o.pending;return o;}}
+      if(o&&o.v===2&&o.season&&o.roster){if(!o.slotsMig){o.upg=o.upg||{};o.upg.slots=Math.max(o.upg.slots||0,Math.min(5,(o.roster||[]).length-5));o.slotsMig=true;}o.upg=Object.assign(UPG0(),o.upg);if(o.season&&!o.season.off){o.season.off=true;o.season.teams.forEach((t,i)=>{if(i)t.ovr=rnd(-7,7);});}o.fem=!!o.fem;o.titlesAll=Math.max(o.titlesAll||0,o.rings||0);if(o.eraTitles!=null&&o.rings>o.eraTitles)o.rings=o.eraTitles;o.hofUnlocked=!!o.hofUnlocked||o.rings>=HOF_TITLES;o.pending=!!o.pending;return o;}}
   }catch(e){}
   return null;
 }
