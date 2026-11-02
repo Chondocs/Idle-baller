@@ -1,0 +1,1596 @@
+/**
+ * Buzzer Dynasty — jeu idle de basket (équipes et joueurs fictifs).
+ *
+ * Organisation du fichier :
+ *   1. Configuration et textes      4. Ligue : matchs, saisons, Hall of Fame
+ *   2. Données et utilitaires       5. Sauvegarde et chargement
+ *   3. Joueurs et économie          6. Rendu, actions, boucle de jeu
+ *
+ * Aucune dépendance : script classique (pas de module) pour fonctionner aussi en file://.
+ * Le dictionnaire de textes est dans i18n.js (chargé avant ce fichier).
+ */
+(() => {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const SAVE_KEY = "buzzer-dynasty-v2",
+    LANG_KEY = "buzzer-lang";
+  const TICK = 18,
+    G = 14,
+    ROSTER_MAX = 8,
+    HOF_TITLES = 6,
+    HOF_RINGS = 3,
+    HOF_PTS = 100000;
+  const DEF_M = "Loire Pionniers",
+    DEF_F = "Loire Pionnières";
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let lang = "fr";
+  try {
+    const l = localStorage.getItem(LANG_KEY);
+    if (l === "fr" || l === "en") lang = l;
+  } catch (e) {}
+
+  /* ========== 1. Configuration et textes ========== */
+  function ord(n) {
+    if (lang === "fr") return n === 1 ? (S && S.fem ? "1re" : "1er") : n + "e";
+    const m = n % 100;
+    if (m >= 11 && m <= 13) return n + "th";
+    return n + ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th");
+  }
+  const DICT = buildDict({ fmt, ord });
+  function T(k, ...a) {
+    let v = DICT[lang][k];
+    if (v === undefined) v = DICT.fr[k];
+    if (Array.isArray(v)) v = v[S && S.fem ? 1 : 0];
+    return typeof v === "function" ? v(...a) : v;
+  }
+
+  /* ========== 2. Données et utilitaires ========== */
+  const FIRST_M = [
+    "Malo",
+    "Théo",
+    "Ibrahim",
+    "Jonas",
+    "Kenzo",
+    "Lucas",
+    "Matteo",
+    "Noé",
+    "Samir",
+    "Tidiane",
+    "Yanis",
+    "Andrés",
+    "Dario",
+    "Emre",
+    "Hugo",
+    "Ilan",
+    "Jules",
+    "Karim",
+    "Léandre",
+    "Marek",
+    "Nils",
+    "Omar",
+    "Paulo",
+    "Rayan",
+    "Silas",
+    "Tomas",
+    "Viktor",
+    "Wassim",
+    "Zacharie",
+    "Amadou",
+    "Bastien",
+    "Cyril",
+    "Dorian",
+    "Elias",
+    "Félix",
+    "Gaspard",
+    "Hakim",
+    "Ivan",
+    "Joaquim",
+    "Kilian",
+  ];
+  const FIRST_F = [
+    "Léa",
+    "Emma",
+    "Inès",
+    "Camille",
+    "Manon",
+    "Jade",
+    "Lina",
+    "Maëlle",
+    "Nora",
+    "Sofia",
+    "Anaïs",
+    "Clara",
+    "Fatou",
+    "Ilona",
+    "Jeanne",
+    "Kenza",
+    "Louane",
+    "Maya",
+    "Naomi",
+    "Océane",
+    "Prisca",
+    "Rania",
+    "Salomé",
+    "Tess",
+    "Yasmine",
+    "Zoé",
+    "Aïssatou",
+    "Béatrice",
+    "Chloé",
+    "Daria",
+    "Eva",
+    "Fanny",
+    "Gwen",
+    "Hana",
+    "Iris",
+    "Julia",
+    "Katia",
+    "Laura",
+    "Mia",
+    "Nadia",
+  ];
+  const LAST = [
+    "Marchetti",
+    "Okafor",
+    "Lemaire",
+    "Duval",
+    "Haddad",
+    "Novak",
+    "Sorel",
+    "Vidal",
+    "Kessler",
+    "Diallo",
+    "Brassac",
+    "Moreau",
+    "Lefèvre",
+    "Varga",
+    "Mbaye",
+    "Roussel",
+    "Ferrand",
+    "Bellamy",
+    "Ouedraogo",
+    "Pasquier",
+    "Ivanov",
+    "Delmas",
+    "Quintana",
+    "Berthier",
+    "Salvi",
+    "Nguyen",
+    "Kowalski",
+    "Lacroix",
+    "Mendes",
+    "Aubry",
+    "Fontaine",
+    "Rosales",
+    "Thibault",
+    "Hamidi",
+    "Perrin",
+    "Estrada",
+    "Lombard",
+    "Gauthier",
+    "Sylla",
+    "Wójcik",
+    "Cordier",
+    "Barros",
+    "Vasseur",
+  ];
+  const TEAMS_M = [
+    "Vallombre Corbeaux",
+    "Port-Sable Marées",
+    "Haut-Brasier Forgerons",
+    "Lacombe Hérons",
+    "Mont-Cerf Rafales",
+    "Saint-Orme Bisons",
+    "Clairval Tonnerre",
+  ];
+  const TEAMS_F = [
+    "Vallombre Corneilles",
+    "Port-Sable Marées",
+    "Haut-Brasier Forgeronnes",
+    "Lacombe Aigrettes",
+    "Mont-Cerf Rafales",
+    "Saint-Orme Panthères",
+    "Clairval Tempêtes",
+  ];
+  const UPG = [
+    { id: "slots", base: 2500, g: 4.5, max: 3 },
+    { id: "shoot", base: 25, g: 1.45 },
+    { id: "coach", base: 80, g: 1.5 },
+    { id: "arena", base: 150, g: 1.6 },
+    { id: "train", base: 300, g: 1.7, max: 10 },
+    { id: "form", base: 500, g: 1.75, max: 10 },
+    { id: "scout", base: 400, g: 1.7, max: 15 },
+    { id: "agent", base: 600, g: 1.8, max: 10 },
+    { id: "recr", base: 800, g: 2.4, max: 5 },
+    { id: "fans", base: 350, g: 1.65, max: 10 },
+    { id: "mascot", base: 250, g: 1.6, max: 8 },
+  ];
+  const UPG0 = () => ({
+    slots: 0,
+    shoot: 0,
+    coach: 0,
+    arena: 0,
+    train: 0,
+    form: 0,
+    scout: 0,
+    agent: 0,
+    recr: 0,
+    fans: 0,
+    mascot: 0,
+  });
+  const slotsMax = () => Math.min(ROSTER_MAX, 5 + S.upg.slots);
+  const hofOpen = () => S.hofUnlocked || S.rings >= HOF_TITLES;
+  const GOAT = { t: 100, l: 100, p: 1e11 };
+
+  const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const esc = (s) =>
+    String(s).replace(
+      /[&<>"']/g,
+      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+    );
+  function shuffle(a) {
+    a = a.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function gauss() {
+    let u = 0,
+      v = 0;
+    while (!u) u = Math.random();
+    while (!v) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function fmt(n) {
+    if (!isFinite(n)) return "0";
+    const a = Math.abs(n),
+      fr = lang === "fr",
+      loc = fr ? "fr-FR" : "en-US";
+    const u = fr
+      ? [
+          [1e12, " Bn"],
+          [1e9, " Md"],
+          [1e6, " M"],
+          [1e3, " k"],
+        ]
+      : [
+          [1e12, "T"],
+          [1e9, "B"],
+          [1e6, "M"],
+          [1e3, "K"],
+        ];
+    for (const [v, s] of u)
+      if (a >= v) return (n / v).toLocaleString(loc, { maximumFractionDigits: 2 }) + s;
+    return n.toLocaleString(loc, { maximumFractionDigits: a < 10 ? 1 : 0 });
+  }
+  let _id = Date.now() + Math.floor(Math.random() * 1000);
+  const uid = () => "p" + (_id++).toString(36);
+  const nm = (p) => p.first + " " + p.last;
+  const tier = (r) => (r >= 80 ? "t4" : r >= 60 ? "t3" : r >= 40 ? "t2" : "t1");
+
+  let hofList = false,
+    saveVal = "",
+    importing = false;
+  let S = null,
+    tab = "court",
+    armed = null,
+    armT = 0;
+  const C = { pps: 0, click: 0, rating: 0 };
+  const bb = { show: false, next: performance.now() + rnd(40000, 80000), until: 0 };
+  let lastTap = 0,
+    streak = 0,
+    fireUntil = 0;
+
+  /* ========== 3. Joueurs et économie ========== */
+  /* Un joueur = une seule note (r) ; tout le reste en découle. */
+  function genPlayer(o) {
+    const p = {
+      id: uid(),
+      first: o.first || pick(S.fem ? FIRST_F : FIRST_M),
+      last: o.last || pick(LAST),
+      age: o.age,
+      r: clamp(Math.round(o.r), 8, 97),
+      pot: 0,
+      peak: 0,
+      seasons: 0,
+      rings: 0,
+      pts: 0,
+      hof: false,
+      son: o.son || null,
+    };
+    const up =
+      o.age <= 21 ? rnd(8, 22) : o.age <= 25 ? rnd(3, 10) : o.age <= 29 ? rnd(0, 4) : rnd(0, 1);
+    p.pot = clamp(p.r + up + (o.potBonus || 0), p.r, 95);
+    p.peak = p.r;
+    return p;
+  }
+  const startRoster = () => [19, 21, 20, 22, 23].map((a) => genPlayer({ r: 20, age: a }));
+  function genProspects() {
+    const out = [],
+      f = S.upg.form,
+      n = 3 + S.upg.recr;
+    for (let i = 0; i < n; i++) {
+      const o = {
+        r: clamp(Math.round(22 + f * 3.5 + S.eraSeason * 1.6 + rnd(-6, 8)), 18, 88),
+        age: rnd(18, 30),
+      };
+      if (S.legends.length && Math.random() < 0.3) {
+        const L = pick(S.legends);
+        o.last = L.last;
+        o.son = L.first + " " + L.last;
+        o.r += 4;
+        o.potBonus = 6;
+        o.age = rnd(18, 21);
+      }
+      out.push(genPlayer(o));
+    }
+    return out;
+  }
+  function signCost(p) {
+    let c = 3 * Math.pow(1.14, p.r) * (1 + Math.max(0, p.pot - p.r) * 0.03);
+    if (p.age >= 31) c *= 0.7;
+    c *= (1 - 0.05 * S.upg.agent) * 0.9;
+    return Math.max(10, Math.round(c));
+  }
+  const upCost = (u) => Math.round(0.9 * u.base * Math.pow(u.g, S.upg[u.id]));
+  const rerollCost = () => Math.round(0.9 * Math.max(20, C.pps * 15) * (1 + S.rerolls * 0.5));
+
+  /* ---------- économie : plus la note est haute, plus il marque ---------- */
+  const DIFF = 0.62;
+  const UNL = { roster: 100, club: 1000, season: 5000 };
+  const BASE_PPS = 0.26;
+  const pp = (r) => DIFF * 0.03 * Math.pow(r / 10, 3);
+  const legacy = () => 1 + S.legends.length * 0.1;
+  const titleMult = () => Math.pow(1.5, S.rings);
+  const eraMult = () => 1 + 0.25 * (S.era - 1);
+  const mult = () => (1 + 0.12 * S.upg.coach) * titleMult() * legacy() * eraMult();
+  const flat = () => BASE_PPS + (S.upg.arena ? DIFF * 3 * Math.pow(S.upg.arena, 1.25) : 0);
+  function recalc() {
+    let b = 0,
+      sum = 0;
+    S.roster.forEach((p) => {
+      b += pp(p.r);
+      sum += p.r;
+    });
+    C.pps = (b + flat()) * mult();
+    C.click =
+      DIFF *
+      (1 + 1.5 * S.upg.shoot + 0.06 * C.pps) *
+      legacy() *
+      eraMult() *
+      (performance.now() < fireUntil ? 2 : 1);
+    C.rating = (sum + (ROSTER_MAX - S.roster.length) * 15) / ROSTER_MAX + 1.5 * S.upg.scout;
+  }
+  function gain(g) {
+    S.pts += g;
+    S.total += g;
+  }
+
+  /* ========== 4. Ligue ========== */
+  function newSeason() {
+    const teams = [{ name: S.name, w: 0, l: 0, pf: 0, pa: 0, ovr: 0 }];
+    (S.fem ? TEAMS_F : TEAMS_M).forEach((n) =>
+      teams.push({ name: n, w: 0, l: 0, pf: 0, pa: 0, ovr: rnd(-7, 7) }),
+    );
+    return {
+      off: true,
+      n: S.seasonN,
+      phase: "reg",
+      game: 0,
+      sched: shuffle([1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]),
+      teams,
+      po: null,
+      champ: null,
+    };
+  }
+  const aiLevel = () => Math.min(95, Math.max(34 + 6 * (S.eraSeason - 1), 0.92 * C.rating));
+  const teamR = (i) => (i === 0 ? C.rating : aiLevel() + S.season.teams[i].ovr);
+  function simGame(ra, rb, me) {
+    let p = 1 / (1 + Math.exp(-(ra - rb) / 5));
+    if (me) p = Math.min(0.97, p * 1.1);
+    const aWin = Math.random() < p;
+    const base = Math.round(74 + ((ra + rb) / 2) * 0.2 + rnd(-5, 7));
+    const win = base + Math.max(1, Math.round(Math.abs(gauss()) * 7) + 1);
+    return aWin ? { a: win, b: base, aWin: true } : { a: base, b: win, aWin: false };
+  }
+  const duelAI = (a, b) => (simGame(teamR(a), teamR(b)).aWin ? a : b);
+  function ranked(se) {
+    return se.teams
+      .map((t, i) => i)
+      .sort((x, y) => {
+        const A = se.teams[x],
+          B = se.teams[y];
+        return B.w - A.w || B.pf - B.pa - (A.pf - A.pa) || x - y;
+      });
+  }
+  function applyResult(se, a, b, r) {
+    const A = se.teams[a],
+      B = se.teams[b];
+    A.pf += r.a;
+    A.pa += r.b;
+    B.pf += r.b;
+    B.pa += r.a;
+    if (r.aWin) {
+      A.w++;
+      B.l++;
+    } else {
+      B.w++;
+      A.l++;
+    }
+  }
+  function log(key, a, k) {
+    S.log.unshift({ key, a: a || [], k: k || "" });
+    if (S.log.length > 40) S.log.length = 40;
+  }
+  /* Le match à venir est tiré au coup d'envoi : le tableau d'affichage le joue en direct. */
+  function prepNext() {
+    recalc();
+    if (!S.un.roster) {
+      S.cur = null;
+      return;
+    }
+    const se = S.season;
+    let opp;
+    if (!S.un.season) {
+      opp = rnd(1, 7);
+      S.cur = { opp, lab: { k: "friendly" }, friendly: true, r: simGame(C.rating, teamR(opp)) };
+      return;
+    }
+    if (se.phase === "reg") {
+      opp = se.sched[se.game];
+      S.cur = { opp, lab: { k: "day", n: se.game + 1 }, r: simGame(C.rating, teamR(opp), true) };
+    } else if (se.phase === "po") {
+      const po = se.po;
+      if (po.round === 0) {
+        const m = po.semis.find((x) => x.includes(0));
+        opp = m[0] === 0 ? m[1] : m[0];
+      } else opp = po.final[1];
+      S.cur = {
+        opp,
+        lab: { k: po.round === 0 ? "semi" : "final" },
+        r: simGame(C.rating, teamR(opp), true),
+      };
+    } else S.cur = null;
+  }
+  function regGame() {
+    const se = S.season,
+      opp = S.cur.opp,
+      r = S.cur.r;
+    applyResult(se, 0, opp, r);
+    const others = shuffle([1, 2, 3, 4, 5, 6, 7].filter((i) => i !== opp));
+    for (let i = 0; i < 6; i += 2) {
+      const a = others[i],
+        b = others[i + 1];
+      applyResult(se, a, b, simGame(teamR(a), teamR(b)));
+    }
+    se.game++;
+    S.last = {
+      lab: { k: "day", n: se.game },
+      a: S.name,
+      b: se.teams[opp].name,
+      sa: r.a,
+      sb: r.b,
+      win: r.aWin,
+    };
+    log("L_game", [se.game, r.aWin, r.a, r.b, se.teams[opp].name], r.aWin ? "good" : "bad");
+    gain(C.pps * (r.aWin ? 40 * (1 + 0.25 * S.upg.fans) : 12));
+    if (se.game >= G) startPlayoffs();
+  }
+  function startPlayoffs() {
+    const se = S.season,
+      order = ranked(se),
+      top = order.slice(0, 4);
+    se.rank = order.indexOf(0) + 1;
+    se.po = {
+      round: 0,
+      semis: [
+        [top[0], top[3]],
+        [top[1], top[2]],
+      ],
+      final: null,
+    };
+    if (!top.includes(0)) {
+      finishSeason(duelAI(duelAI(top[0], top[3]), duelAI(top[1], top[2])), "out");
+      return;
+    }
+    se.phase = "po";
+    log("L_po", [se.rank], "gold");
+  }
+  function poGame() {
+    const se = S.season,
+      po = se.po,
+      opp = S.cur.opp,
+      r = S.cur.r;
+    if (po.round === 0) {
+      const other = po.semis.find((m) => !m.includes(0));
+      S.last = {
+        lab: { k: "semi" },
+        a: S.name,
+        b: se.teams[opp].name,
+        sa: r.a,
+        sb: r.b,
+        win: r.aWin,
+      };
+      const ow = duelAI(other[0], other[1]);
+      if (r.aWin) {
+        po.round = 1;
+        po.final = [0, ow];
+        gain(C.pps * 90 * (1 + 0.25 * S.upg.fans));
+        log("L_semiW", [r.a, r.b], "good");
+      } else {
+        log("L_semiL", [r.a, r.b], "bad");
+        finishSeason(duelAI(opp, ow), "semi");
+      }
+    } else {
+      S.last = {
+        lab: { k: "final" },
+        a: S.name,
+        b: se.teams[opp].name,
+        sa: r.a,
+        sb: r.b,
+        win: r.aWin,
+      };
+      if (r.aWin) finishSeason(0, "champ");
+      else {
+        log("L_finalL", [r.a, r.b], "bad");
+        finishSeason(opp, "final");
+      }
+    }
+  }
+  function finishSeason(champ, res) {
+    const se = S.season,
+      t = se.teams[0];
+    se.phase = "off";
+    se.champ = champ;
+    S.history.push({ n: se.n, champ: se.teams[champ].name, res, rec: `${t.w}-${t.l}`, era: S.era });
+    if (S.history.length > 30) S.history.shift();
+    if (champ === 0) {
+      S.rings++;
+      S.titlesAll++;
+      S.eraTitles++;
+      if (S.rings >= HOF_TITLES) S.hofUnlocked = true;
+      S.roster.forEach((p) => {
+        p.rings++;
+      });
+      gain(C.pps * 300);
+      log("L_champ", [S.rings], "gold");
+      toast(S.rings === HOF_TITLES ? T("T_hofUnlock") : T("T_champ"));
+    } else log("L_other", [se.teams[champ].name]);
+  }
+  function progress(p) {
+    const t = S.upg.train;
+    let d;
+    if (p.age <= 24) d = rnd(1, 4) + (Math.random() < Math.min(0.6, t * 0.1) ? 1 : 0);
+    else if (p.age <= 29) d = rnd(-1, 2);
+    else if (p.age <= 33) d = -rnd(0, 2);
+    else d = -rnd(1, 3);
+    if (d < 0 && Math.random() < t * 0.06) d = 0;
+    if (d > 0 && p.r >= p.pot) d = 0;
+    p.r = clamp(p.r + d, 5, 99);
+    p.peak = Math.max(p.peak, p.r);
+  }
+  function offseason() {
+    const retired = [];
+    S.roster.forEach((p) => {
+      p.age++;
+      p.seasons++;
+      progress(p);
+    });
+    S.roster = S.roster.filter((p) => {
+      const r =
+        p.age >= 39 ||
+        (p.age >= 34 && Math.random() < 0.25 + (p.age - 34) * 0.15 + (p.r < 55 ? 0.2 : 0));
+      if (r) retired.push(p);
+      return !r;
+    });
+    retired.forEach((p) => log("L_retire", [nm(p)]));
+    S.seasonN++;
+    S.eraSeason++;
+    S.rerolls = 0;
+    S.prospects = genProspects();
+    S.season = newSeason();
+    S.last = null;
+    log("L_draft", [S.seasonN]);
+  }
+  /* Entrée au Hall of Fame dès que les critères sont remplis, sans attendre la retraite. */
+  function checkHof() {
+    let any = false;
+    S.roster.forEach((p) => {
+      if (!p.hof && p.rings >= HOF_RINGS && (p.pts || 0) >= HOF_PTS) {
+        p.hof = true;
+        any = true;
+        S.legends.push({
+          id: p.id,
+          first: p.first,
+          last: p.last,
+          peak: p.peak,
+          rings: p.rings,
+          pts: Math.round(p.pts),
+          seasons: p.seasons + 1,
+        });
+        log("L_hofIn", [nm(p)], "gold");
+        toast(T("T_hofIn", nm(p).toUpperCase()));
+      }
+    });
+    if (any) {
+      recalc();
+      renderAll();
+    }
+  }
+  function playTick() {
+    if (!S.un.roster) return;
+    if (!S.cur) prepNext();
+    if (!S.un.season) {
+      const c = S.cur;
+      if (c) {
+        S.last = {
+          lab: { k: "friendly" },
+          a: S.name,
+          b: S.season.teams[c.opp].name,
+          sa: c.r.a,
+          sb: c.r.b,
+          win: c.r.aWin,
+        };
+      }
+      prepNext();
+      renderInfo();
+      updateLive();
+      return;
+    }
+    const ph = S.season.phase;
+    if (ph === "reg") regGame();
+    else if (ph === "po") poGame();
+    else offseason();
+    prepNext();
+    if (ph === "off") renderAll();
+    else {
+      renderInfo();
+      renderSeason();
+      renderTabs();
+    }
+    updateLive();
+  }
+  const popQ = [];
+  function checkUnlocks() {
+    for (const k of ["roster", "club", "season"]) {
+      if (!S.un[k] && S.total >= UNL[k]) {
+        S.un[k] = true;
+        if (k === "roster" || k === "season") {
+          S.timer = TICK;
+          S.cur = null;
+          if (k === "season") {
+            S.season = newSeason();
+            S.last = null;
+            log("L_welcome");
+          }
+          prepNext();
+        }
+        popQ.push(k);
+        renderAll();
+        showNextPop();
+        save();
+      }
+    }
+  }
+  function showNextPop() {
+    const p = $("#pop");
+    if (!p.hidden || !popQ.length) return;
+    const k = popQ.shift();
+    $("#popT").textContent = T("pop_" + k + "_t");
+    $("#popB").textContent = T("pop_" + k + "_b");
+    p.hidden = false;
+    setHdr();
+  }
+  function lockPanel(k, title) {
+    const th = UNL[k],
+      pct = Math.min(100, Math.round((S.total / th) * 100));
+    return panel(
+      `${title} <small>${T("lkLabel")}</small>`,
+      `<div class="card"><p>${T("unlockAt", fmt(th))}</p><div class="meter"><i style="width:${pct}%"></i></div></div>`,
+    );
+  }
+  function syncName() {
+    if (S.name === DEF_M || S.name === DEF_F) S.name = S.fem ? DEF_F : DEF_M;
+    $("#teamName").value = S.name;
+  }
+  function startCareer(fem) {
+    S.fem = fem;
+    syncName();
+    S.roster = startRoster();
+    S.prospects = genProspects();
+    S.season = newSeason();
+    S.last = null;
+    S.timer = TICK;
+    S.rerolls = 0;
+    S.pending = false;
+    S.cur = null;
+    if (S.era > 1) log("L_era", [S.era, eraMult().toFixed(2)], "gold");
+    else log("L_welcome");
+    prepNext();
+    $("#pick").hidden = true;
+    tab = "court";
+    renderAll();
+    toTop();
+    save();
+  }
+  function newEra() {
+    S.era++;
+    S.eraSeason = 1;
+    S.eraTitles = 0;
+    S.rings = 0;
+    S.pts = 0;
+    S.rerolls = 0;
+    S.upg = UPG0();
+    S.seasonN++;
+    S.roster = [];
+    S.prospects = [];
+    S.last = null;
+    S.cur = null;
+    S.season = newSeason();
+    S.pending = true;
+    showPick();
+    renderAll();
+  }
+  function newState() {
+    S = {
+      v: 2,
+      titlesAll: 0,
+      hofUnlocked: false,
+      name: DEF_M,
+      fem: false,
+      pending: true,
+      pts: 0,
+      total: 0,
+      un: { roster: false, club: false, season: false },
+      era: 1,
+      eraSeason: 1,
+      seasonN: 1,
+      rings: 0,
+      eraTitles: 0,
+      legends: [],
+      history: [],
+      speed: 1,
+      upg: UPG0(),
+      roster: [],
+      prospects: [],
+      rerolls: 0,
+      log: [],
+      last: null,
+      cur: null,
+      timer: TICK,
+      t: Date.now(),
+      season: null,
+    };
+    S.roster = startRoster();
+    S.prospects = genProspects();
+    S.season = newSeason();
+    return S;
+  }
+  function save() {
+    if (importing) return;
+    try {
+      S.t = Date.now();
+      localStorage.setItem(SAVE_KEY, JSON.stringify(S));
+    } catch (e) {}
+  }
+  function load() {
+    try {
+      const j = localStorage.getItem(SAVE_KEY);
+      if (j) {
+        const o = JSON.parse(j);
+        if (o && o.v === 2 && o.season && o.roster) {
+          if (!o.slotsMig) {
+            o.upg = o.upg || {};
+            o.upg.slots = Math.max(
+              o.upg.slots || 0,
+              Math.min(3, Math.max(0, (o.roster || []).length - 5)),
+            );
+            o.slotsMig = true;
+          }
+          o.upg = Object.assign(UPG0(), o.upg);
+          o.upg.slots = Math.min(3, o.upg.slots || 0);
+          if (o.roster.length > ROSTER_MAX) {
+            o.roster.sort((a, b) => b.r - a.r);
+            o.roster.length = ROSTER_MAX;
+          }
+          if (o.season && !o.season.off) {
+            o.season.off = true;
+            o.season.teams.forEach((t, i) => {
+              if (i) t.ovr = rnd(-7, 7);
+            });
+          }
+          if (!o.un) o.un = { roster: true, club: true, season: true };
+          o.fem = !!o.fem;
+          o.titlesAll = Math.max(o.titlesAll || 0, o.rings || 0);
+          if (o.eraTitles != null && o.rings > o.eraTitles) o.rings = o.eraTitles;
+          o.hofUnlocked = !!o.hofUnlocked || o.rings >= HOF_TITLES;
+          o.pending = !!o.pending;
+          return o;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  /* ========== 6. Rendu, actions, boucle ========== */
+
+  /* ---------- avatars pixel ---------- */
+  function hash(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  function avatar(p) {
+    const h = hash(p.id);
+    const skin = ["#f1c27d", "#e0a96d", "#c68642", "#8d5524", "#5c3a1e"][h % 5];
+    const hair = ["#111", "#3b2314", "#111", "#7a4a21", "#d9b13b"][(h >> 3) % 5];
+    const hs = (h >> 6) % 3;
+    let hairR;
+    if (S.fem)
+      hairR =
+        hs === 0
+          ? '<rect x="3" y="0" width="6" height="2"/><rect x="2" y="2" width="1" height="6"/><rect x="9" y="2" width="1" height="6"/>'
+          : hs === 1
+            ? '<rect x="2" y="0" width="8" height="3"/><rect x="2" y="3" width="1" height="4"/><rect x="9" y="3" width="1" height="4"/>'
+            : '<rect x="3" y="0" width="6" height="2"/><rect x="9" y="2" width="2" height="3"/>';
+    else
+      hairR =
+        hs === 0
+          ? '<rect x="3" y="0" width="6" height="2"/>'
+          : hs === 1
+            ? '<rect x="2" y="0" width="8" height="3"/>'
+            : '<rect x="3" y="1" width="6" height="1"/>';
+    return `<svg class="av" viewBox="0 0 12 14" aria-hidden="true">
+    <rect x="3" y="2" width="6" height="5" fill="${skin}"/><rect x="5" y="7" width="2" height="1" fill="${skin}"/>
+    <g fill="${hair}">${hairR}</g>
+    <rect x="4" y="4" width="1" height="1" fill="#000"/><rect x="7" y="4" width="1" height="1" fill="#000"/>
+    <rect x="2" y="8" width="8" height="6" fill="#e2231a"/><rect x="0" y="8" width="2" height="4" fill="${skin}"/><rect x="10" y="8" width="2" height="4" fill="${skin}"/>
+    <rect x="5" y="9" width="2" height="3" fill="#ffd21f"/>
+  </svg>`;
+  }
+
+  /* ---------- drapeaux ---------- */
+  function flag(l, id) {
+    if (l === "fr")
+      return `<svg class="flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="1" height="2" fill="#0055A4"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#EF4135"/></svg>`;
+    return `<svg class="flag" viewBox="0 0 60 30" aria-hidden="true"><clipPath id="fs${id}"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="ft${id}"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#fs${id})"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#ft${id})" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></g></svg>`;
+  }
+
+  /* ---------- vues ---------- */
+  const panel = (title, body) =>
+    `<div class="panel"><h2 class="ph">${title}</h2><div class="pb">${body}</div></div>`;
+  const labText = (l, old) => (!l ? old || "" : l.k === "day" ? T("day", l.n, G) : T(l.k));
+  function boardHtml() {
+    const se = S.season,
+      c = S.cur,
+      L = S.last,
+      t = se.teams[0];
+    const head = !S.un.season
+      ? T("friendlyHead")
+      : c
+        ? `${T("seasonN", se.n)} · ${labText(c.lab, c.label)}`
+        : `${T("seasonN", se.n)} · ${T("offseason")}`;
+    const last = L ? T("lastMatch", L.win, L.sa, L.sb) : T("noMatch");
+    return `<div class="panel board" id="board"><h2 class="ph">${esc(head)}</h2><div class="pb">
+    <div class="b-clock"><span class="b-qtr" id="bQtr">Q1</span><span class="b-time" id="bTime">48:00</span></div>
+    <div class="b-teams">
+      <div class="b-team"><span class="tn home">${esc(S.name)}</span><span class="sc" id="scA">0</span></div>
+      <span class="b-vs">VS</span>
+      <div class="b-team"><span class="tn">${esc(c ? se.teams[c.opp].name : "—")}</span><span class="sc" id="scB">0</span></div>
+    </div>
+    <div class="b-last">${esc(last)}</div>
+    <div class="b-facts"><span>${T("f_rating")} <b>${C.rating.toFixed(1).replace(".", lang === "fr" ? "," : ".")}</b></span><span>${T("f_shot")} <b>+${fmt(C.click)}</b></span>${S.un.season ? `<span>${T("f_record")} <b>${T("rec", t.w, t.l)}</b></span><span>${T("f_titles")} <b>${S.rings}</b></span>` : ""}</div></div></div>`;
+  }
+  function updateBoard() {
+    const a = $("#scA");
+    if (!a) return;
+    const c = S.cur;
+    if (!c) {
+      a.textContent = "--";
+      $("#scB").textContent = "--";
+      $("#bTime").textContent = "--:--";
+      $("#bQtr").textContent = T("qBreak");
+      return;
+    }
+    const prog = clamp(1 - S.timer / TICK, 0, 1);
+    a.textContent = Math.floor(c.r.a * Math.pow(prog, 0.96));
+    $("#scB").textContent = Math.floor(c.r.b * Math.pow(prog, 1.04));
+    const rem = Math.round((1 - prog) * 2880);
+    $("#bTime").textContent =
+      String(Math.floor(rem / 60)).padStart(2, "0") + ":" + String(rem % 60).padStart(2, "0");
+    $("#bQtr").textContent = prog >= 1 ? T("qEnd") : "Q" + Math.min(4, Math.floor(prog * 4) + 1);
+  }
+  function plRow(p, mode, i) {
+    const prod = pp(p.r) * mult();
+    const tags =
+      (p.son ? `<span class="tag">${T("sonOf")} ${esc(p.son.toUpperCase())}</span>` : "") +
+      (p.hof ? '<span class="tag">HOF</span>' : "") +
+      (p.rings
+        ? `<span class="tag"><span class="tx">${T("ringsTag", p.rings)}</span><span class="ts">★${p.rings}</span></span>`
+        : "");
+    let act;
+    if (mode === "prospect") {
+      const c = signCost(p);
+      act = `<button class="btn pri" data-act="sign" data-i="${i}" data-cost="${c}" data-block="${S.roster.length >= slotsMax() ? 1 : 0}">${T("sign")} ${fmt(c)}</button>`;
+    } else
+      act = `<button class="btn ghost" data-act="release" data-id="${p.id}">${T("release")}</button>`;
+    return `<article class="pl${p.rings ? " has-rings" : ""}">${avatar(p)}
+    <div class="pl-id"><strong>${esc(nm(p))}${tags}</strong><small>${T("age", p.age)} · ${T("pot")} ${p.pot}</small><em>+${fmt(prod)}/s${mode === "prospect" ? "" : '<span class="mq"> · ' + fmt(p.pts || 0) + " " + T("scored") + "</span>"}</em></div>
+    <div class="pl-r"><span class="rt ${tier(p.r)}">${p.r}</span>${act}</div></article>`;
+  }
+  /* Insère le nouveau contenu avant de retirer l'ancien : la hauteur ne s'effondre jamais, le défilement reste en place. */
+  function setHtml(el, html) {
+    const old = Array.from(el.childNodes);
+    el.insertAdjacentHTML("beforeend", html);
+    old.forEach((n) => n.remove());
+  }
+  function renderInfo() {
+    setHtml($("#info"), S.un.roster ? boardHtml() : "");
+    updateBoard();
+  }
+  function renderRoster() {
+    if (!S.un.roster) {
+      setHtml($("#sec-roster"), lockPanel("roster", T("roster")));
+      return;
+    }
+    const list = S.roster.slice().sort((a, b) => b.r - a.r);
+    const rows =
+      list.map((p) => plRow(p, "roster")).join("") +
+      Array.from(
+        { length: Math.max(0, slotsMax() - list.length) },
+        () => `<div class="slot">${T("free")}</div>`,
+      ).join("") +
+      (ROSTER_MAX - Math.max(slotsMax(), list.length) > 0
+        ? `<div class="slot" style="opacity:.55">${T("slotLock", ROSTER_MAX - Math.max(slotsMax(), list.length))}</div>`
+        : "");
+    const rc = rerollCost();
+    const pros =
+      S.prospects.map((p, i) => plRow(p, "prospect", i)).join("") ||
+      `<p class="hint">${T("noProspect")}</p>`;
+    setHtml(
+      $("#sec-roster"),
+      `<div class="rs">` +
+        panel(
+          `${T("roster")} <small>${list.length}/${slotsMax()}</small>`,
+          `<div class="list">${rows}</div>`,
+        ) +
+        panel(
+          T("scouting"),
+          `<div class="list">${pros}</div><button class="btn" data-act="reroll" data-cost="${rc}" data-block="0">${T("reroll", fmt(rc))}</button>`,
+        ) +
+        `</div>`,
+    );
+  }
+  function renderClub() {
+    if (!S.un.club) {
+      setHtml($("#sec-club"), lockPanel("club", T("facilities")));
+      return;
+    }
+    setHtml(
+      $("#sec-club"),
+      panel(
+        T("facilities"),
+        `<div class="list">${UPG.map((u) => {
+          const l = S.upg[u.id],
+            c = upCost(u),
+            maxed = u.max && l >= u.max;
+          const lk = !S.un.season && (u.id === "scout" || u.id === "fans");
+          if (lk)
+            return `<article class="up lk" data-lk="${T("lkSeason")}"><div><strong>${T("u_" + u.id)}</strong><span class="lvl">${T("lvl", 0)}</span><p>${T("d_" + u.id, 0)}</p></div><button class="btn pri" disabled>${fmt(c)}</button></article>`;
+          return `<article class="up"><div><strong>${T("u_" + u.id)}</strong><span class="lvl">${T("lvl", l)}</span><p>${T("d_" + u.id, l)}</p></div>
+      <button class="btn pri" data-act="buy" data-u="${u.id}" data-cost="${c}" data-block="${maxed ? 1 : 0}">${maxed ? T("max") : fmt(c)}</button></article>`;
+        }).join("")}</div>`,
+      ),
+    );
+  }
+  function renderSeason() {
+    if (document.activeElement && document.activeElement.id === "saveBox") return;
+    if (!S.un.season) {
+      setHtml($("#sec-season"), lockPanel("season", T("standings")) + partiePanel());
+      return;
+    }
+    const se = S.season,
+      order = ranked(se);
+    const rows = order
+      .map((i, r) => {
+        const t = se.teams[i],
+          d = t.pf - t.pa;
+        return `<tr class="${i === 0 ? "me" : ""} ${r === 3 ? "cut" : ""}"><td>${r + 1}</td><td>${esc(i === 0 ? S.name : t.name)}</td><td>${t.w}</td><td>${t.l}</td><td>${d > 0 ? "+" : ""}${d}</td></tr>`;
+      })
+      .join("");
+    const next =
+      se.phase === "reg"
+        ? se.sched
+            .slice(se.game, se.game + 4)
+            .map((i, k) => `<li>${T("dayShort", se.game + k + 1)} · ${esc(se.teams[i].name)}</li>`)
+            .join("")
+        : "";
+    const status =
+      se.phase === "off" && se.champ != null
+        ? T("champIs", se.teams[se.champ].name)
+        : se.phase === "po"
+          ? T("poOn")
+          : T("poNote");
+    const logs = S.log
+      .slice(0, 12)
+      .map((e) => `<li class="${e.k}">${esc(e.key ? T(e.key, ...e.a) : e.t)}</li>`)
+      .join("");
+    setHtml(
+      $("#sec-season"),
+      panel(
+        `${T("standings")} <small>${T("seasonN", se.n)}</small>`,
+        `<p class="hint">${status}</p><div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>${T("th_team")}</th><th>${T("th_w")}</th><th>${T("th_l")}</th><th>${T("th_d")}</th></tr></thead><tbody>${rows}</tbody></table></div>${next ? `<ul class="log">${next}</ul>` : ""}`,
+      ) +
+        panel(T("journal"), `<ul class="log">${logs}</ul>`) +
+        partiePanel(),
+    );
+  }
+  function partiePanel() {
+    return panel(
+      T("gameP"),
+      `<div class="card"><p>${T("saveNote")}</p><p>${T("sv_help")}</p><textarea id="saveBox" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="${esc(T("sv_ph"))}" style="width:100%;background:#000;color:var(--white);border:2px solid var(--blue);border-radius:4px;padding:8px;font:13px/1.3 monospace;resize:vertical">${esc(saveVal)}</textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="export">${T("sv_exp")}</button><button class="btn pri" data-act="import">${armed === "import" ? T("sv_sure") : T("sv_imp")}</button></div>
+      <button class="btn ghost" data-act="reset">${armed === "reset" ? T("resetConfirm") : T("resetBtn")}</button></div>`,
+    );
+  }
+  function renderLegends() {
+    if (!hofOpen()) {
+      const pct = Math.round((S.rings / HOF_TITLES) * 100);
+      setHtml(
+        $("#sec-legends"),
+        panel(
+          `${T("hof")} <small>${T("locked")}</small>`,
+          `<div class="card"><p>${T("lockTxt", S.rings, HOF_TITLES)}</p><div class="meter"><i style="width:${pct}%"></i></div></div>`,
+        ),
+      );
+      return;
+    }
+    const hof = S.legends
+      .slice()
+      .reverse()
+      .slice(0, hofList ? 999 : 3)
+      .map((L) => {
+        const live = S.roster.find((x) => x.id === L.id);
+        const rings = live ? live.rings : L.rings,
+          pts = live ? live.pts : L.pts,
+          seasons = live ? live.seasons + 1 : L.seasons;
+        return `<article><div><strong>${esc(L.first + " " + L.last)}</strong><br><small>${T("peakLine", L.peak, fmt(pts || 0), seasons)}${live ? " · " + T("active") : ""}</small></div><span class="tag">${T("ringsTag", rings)}</span></article>`;
+      })
+      .join("");
+    const hist = S.history
+      .slice(-8)
+      .reverse()
+      .map((h) => {
+        const rk =
+          { Champion: "champ", Finaliste: "final", "Demi-finale": "semi", "Hors playoffs": "out" }[
+            h.res
+          ] || h.res;
+        return `<li class="${rk === "champ" ? "gold" : ""}">${esc(T("hist", h.n, T("res_" + rk), h.rec, h.champ))}</li>`;
+      })
+      .join("");
+    const can = S.rings >= HOF_TITLES;
+    setHtml(
+      $("#sec-legends"),
+      panel(
+        `${T("heritage")} <small>${T("heritSub", fmt(titleMult() * legacy() * eraMult()))}</small>`,
+        `<p class="hint">${T("heritTxt", S.rings, fmt(titleMult()), S.legends.length, S.era)}</p>`,
+      ) +
+        panel(
+          `${T("hof")} <button class="btn ghost" data-act="hoflist" aria-expanded="${hofList}" style="padding:4px 10px;min-height:30px;color:var(--yellow)">${S.legends.length} ${hofList ? "▾" : "▸"}</button>`,
+          `<p class="hint">${T("hofRule", HOF_RINGS, fmt(HOF_PTS))}</p><div class="hof">${hof || `<p class="hint">${T("noLegend")}</p>`}</div>`,
+        ) +
+        panel(T("palmares"), `<ul class="log">${hist || `<li>${T("noSeason")}</li>`}</ul>`) +
+        panel(
+          T("eraTitle"),
+          `<div class="card"><p>${T("eraTxt")}</p>
+      <button class="btn pri" data-act="era" ${can ? "" : "disabled"}>${armed === "era" ? T("eraConfirm") : T("eraBtn")}</button>
+      ${can ? "" : `<p>${T("eraLock", Math.min(S.rings, HOF_TITLES), HOF_TITLES)}</p>`}</div>`,
+        ) +
+        goatPanel(),
+    );
+  }
+  function goatPanel() {
+    const row = (k, v, g, f) =>
+      `<div><div class="pl-id"><strong>${T(k)}</strong><small>${f(v)} / ${f(g)}</small></div><div class="meter"><i style="width:${Math.min(100, (v / g) * 100)}%"></i></div></div>`;
+    const done = S.titlesAll >= GOAT.t && S.legends.length >= GOAT.l && S.total >= GOAT.p;
+    return panel(
+      `${T("goat")} <small>${done ? "★" : ""}</small>`,
+      `<div class="card"><p>${done ? T("goatDone") : T("goatTxt")}</p>` +
+        row("g_t", S.titlesAll, GOAT.t, fmt) +
+        row("g_l", S.legends.length, GOAT.l, fmt) +
+        row("g_p", S.total, GOAT.p, fmt) +
+        `</div>`,
+    );
+  }
+  const TABS = ["court", "roster", "club", "season", "legends"];
+  function renderTabs() {
+    setHtml(
+      $("#tabs"),
+      TABS.map((k) => {
+        const key = k === "legends" ? "tab_hof" : "tab_" + k;
+        const ul = (k === "roster" || k === "club") && !S.un[k],
+          lock = (k === "legends" && !hofOpen()) || ul || (k === "season" && !S.un.season);
+        const sub = ul
+          ? "<br><small>" + fmt(UNL[k]) + "</small>"
+          : k === "season" && !S.un.season
+            ? "<br><small>" + fmt(UNL.season) + "</small>"
+            : "";
+        return `<button data-tab="${k}"${k === tab ? ' aria-current="page"' : ""}${lock ? ' aria-disabled="true"' : ""}>${k === "legends" && lock ? T(key) + " " + S.rings + "/" + HOF_TITLES : T(key) + sub}</button>`;
+      }).join(""),
+    );
+    document
+      .querySelectorAll(".sec")
+      .forEach((s) => s.classList.toggle("on", s.dataset.sec === tab));
+    $("#view").dataset.cur = tab;
+  }
+  function renderAll() {
+    const y = $("#app").scrollTop;
+    recalc();
+    renderInfo();
+    renderRoster();
+    renderClub();
+    renderSeason();
+    renderLegends();
+    renderTabs();
+    updateLive();
+    setHdr();
+    $("#app").scrollTop = y;
+  }
+  function setHdr() {
+    const r = document.documentElement.style;
+    r.setProperty("--hdr", $(".top").offsetHeight + "px");
+    r.setProperty("--tabsH", $(".tabs").offsetHeight + "px");
+    r.setProperty("--appH", $("#app").clientHeight + "px");
+  }
+  function toTop() {
+    $("#app").scrollTop = 0;
+  }
+  function refreshAfford() {
+    document.querySelectorAll("[data-cost]").forEach((el) => {
+      el.disabled = el.dataset.block === "1" || S.pts < +el.dataset.cost;
+    });
+  }
+  function updateLive() {
+    $("#pts").textContent = fmt(S.pts);
+    $("#pps").textContent = "+" + fmt(C.pps) + "/s";
+    {
+      let t = T("eraTag", S.era, S.eraSeason);
+      if (S.un.season) {
+        const o = ranked(S.season),
+          rk = o.indexOf(0) + 1,
+          me = S.season.teams[0];
+        t += " · " + ord(rk) + " · " + me.w + "-" + me.l;
+      }
+      $("#eraTag").textContent = t;
+    }
+    updateBoard();
+    $("#bb").hidden = !bb.show;
+    const fire = performance.now() < fireUntil;
+    $("#fireTag").hidden = !fire;
+    $("#shoot").classList.toggle("fire", fire);
+    document
+      .querySelectorAll("[data-speed]")
+      .forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.speed === S.speed)));
+    refreshAfford();
+  }
+  let tt = 0;
+  function toast(msg) {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(tt);
+    tt = setTimeout(() => t.classList.remove("show"), 3200);
+  }
+  function arm(id) {
+    armed = id;
+    renderAll();
+    clearTimeout(armT);
+    armT = setTimeout(() => {
+      armed = null;
+      renderAll();
+    }, 3000);
+  }
+  function showPick() {
+    applyStatic();
+    $("#pick").hidden = false;
+    setHdr();
+  }
+
+  /* ---------- langue ---------- */
+  function applyStatic() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i]").forEach((el) => {
+      el.textContent = T(el.dataset.i);
+    });
+    document.querySelectorAll("[data-i-aria]").forEach((el) => {
+      el.setAttribute("aria-label", T(el.dataset.iAria));
+    });
+    $("#langBtn").innerHTML = flag(lang, "b");
+    document
+      .querySelectorAll("[data-lang]")
+      .forEach((b) => b.setAttribute("aria-current", String(b.dataset.lang === lang)));
+  }
+  function setLang(l) {
+    lang = l;
+    try {
+      localStorage.setItem(LANG_KEY, l);
+    } catch (e) {}
+    applyStatic();
+    renderAll();
+  }
+  function closeMenu() {
+    $("#langMenu").hidden = true;
+    $("#langBtn").setAttribute("aria-expanded", "false");
+  }
+
+  /* ---------- tir ---------- */
+  function floatText(x, y, v) {
+    const w = $("#courtWrap");
+    const f = document.createElement("div");
+    f.className = "float";
+    f.textContent = "+" + fmt(v);
+    w.appendChild(f);
+    const t0 = `translate(${x}px,${y}px) translate(-50%,-50%)`;
+    f.style.transform = t0;
+    if (reduce) {
+      setTimeout(() => f.remove(), 500);
+      return;
+    }
+    const a = f.animate(
+      [
+        { transform: t0, opacity: 1 },
+        { transform: `translate(${x}px,${y - 36}px) translate(-50%,-50%)`, opacity: 0 },
+      ],
+      { duration: 650, easing: "ease-out" },
+    );
+    a.onfinish = () => f.remove();
+  }
+  function shoot() {
+    const now = performance.now();
+    if (now < fireUntil) streak = 0;
+    else {
+      streak = now - lastTap < 700 ? streak + 1 : 1;
+      if (streak >= 10) {
+        fireUntil = now + 6000 + 2000 * S.upg.mascot;
+        streak = 0;
+      }
+    }
+    lastTap = now;
+    recalc();
+    const v = C.click;
+    gain(v);
+    const w = $("#courtWrap"),
+      btn = $("#shoot"),
+      hp = $("#hoop");
+    const W = w.getBoundingClientRect(),
+      B = btn.getBoundingClientRect(),
+      H = hp.getBoundingClientRect();
+    const sx = B.left + B.width / 2 - W.left,
+      sy = B.top + B.height / 2 - W.top,
+      ex = H.left - W.left,
+      ey = H.top - W.top;
+    if (reduce || w.querySelectorAll(".fly").length > 5) {
+      floatText(ex, ey + 24, v);
+      return;
+    }
+    const f = document.createElement("div");
+    f.className = "fly";
+    w.appendChild(f);
+    const mx = (sx + ex) / 2 + rnd(-24, 24),
+      my = Math.min(sy, ey) - 40;
+    const a = f.animate(
+      [
+        { transform: `translate(${sx}px,${sy}px) translate(-50%,-50%) scale(1)` },
+        { transform: `translate(${mx}px,${my}px) translate(-50%,-50%) scale(.85)`, offset: 0.5 },
+        { transform: `translate(${ex}px,${ey}px) translate(-50%,-50%) scale(.6)` },
+      ],
+      { duration: 480, easing: "cubic-bezier(.3,.6,.5,1)" },
+    );
+    a.onfinish = () => {
+      f.remove();
+      floatText(ex, ey + 24, v);
+    };
+  }
+
+  /* ---------- actions ---------- */
+  function act(a, el) {
+    switch (a) {
+      case "lang": {
+        const m = $("#langMenu");
+        m.hidden = !m.hidden;
+        $("#langBtn").setAttribute("aria-expanded", String(!m.hidden));
+        break;
+      }
+      case "shoot":
+        shoot();
+        updateLive();
+        break;
+      case "bb": {
+        recalc();
+        const g = C.pps * 40 + C.click * 5;
+        gain(g);
+        bb.show = false;
+        bb.next = performance.now() + rnd(60000, 110000);
+        el.hidden = true;
+        toast(T("T_beater", fmt(g).toUpperCase()));
+        updateLive();
+        break;
+      }
+      case "sign": {
+        const i = +el.dataset.i,
+          p = S.prospects[i];
+        if (!p) return;
+        const c = signCost(p);
+        if (S.roster.length >= slotsMax()) {
+          toast(T("T_full"));
+          return;
+        }
+        if (S.pts < c) return;
+        S.pts -= c;
+        S.roster.push(p);
+        S.prospects.splice(i, 1);
+        log("L_sign", [nm(p)], "good");
+        toast(T("T_signs", nm(p).toUpperCase()));
+        renderAll();
+        break;
+      }
+      case "reroll": {
+        const c = rerollCost();
+        if (S.pts < c) return;
+        S.pts -= c;
+        S.rerolls++;
+        S.prospects = genProspects();
+        renderAll();
+        break;
+      }
+      case "release": {
+        const id = el.dataset.id;
+        if (S.roster.length <= 1) {
+          toast(T("T_keep"));
+          return;
+        }
+        const p = S.roster.find((x) => x.id === id);
+        S.roster = S.roster.filter((x) => x.id !== id);
+        if (p) log("L_release", [nm(p)]);
+        renderAll();
+        break;
+      }
+      case "buy": {
+        const u = UPG.find((x) => x.id === el.dataset.u);
+        if (!u) return;
+        const c = upCost(u);
+        if (S.pts < c) return;
+        S.pts -= c;
+        S.upg[u.id]++;
+        renderAll();
+        break;
+      }
+      case "export": {
+        save();
+        saveVal = "BD2:" + btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+        renderSeason();
+        const b = $("#saveBox");
+        if (b) {
+          b.focus();
+          b.select();
+        }
+        let ok = false;
+        try {
+          navigator.clipboard.writeText(saveVal).then(
+            () => toast(T("sv_copied")),
+            () => toast(T("sv_made")),
+          );
+          ok = true;
+        } catch (e) {}
+        if (!ok) toast(T("sv_made"));
+        break;
+      }
+      case "import": {
+        const b = $("#saveBox");
+        let v = ((b && b.value) || saveVal).trim();
+        let o = null;
+        try {
+          if (v.startsWith("BD2:")) v = v.slice(4);
+          o = JSON.parse(decodeURIComponent(escape(atob(v.replace(/\s+/g, "")))));
+        } catch (e) {}
+        if (!o || o.v !== 2 || !o.season || !o.roster) {
+          toast(T("sv_bad"));
+          return;
+        }
+        if (armed !== "import") {
+          arm("import");
+          return;
+        }
+        armed = null;
+        importing = true;
+        try {
+          localStorage.setItem(SAVE_KEY, JSON.stringify(o));
+          toast(T("sv_ok"));
+          setTimeout(() => location.reload(), 600);
+        } catch (e) {
+          toast(T("sv_bad"));
+        }
+        break;
+      }
+      case "popok":
+        $("#pop").hidden = true;
+        showNextPop();
+        break;
+      case "hoflist":
+        hofList = !hofList;
+        renderLegends();
+        break;
+      case "era":
+        if (armed !== "era") {
+          arm("era");
+          return;
+        }
+        armed = null;
+        newEra();
+        break;
+      case "reset":
+        if (armed !== "reset") {
+          arm("reset");
+          return;
+        }
+        armed = null;
+        try {
+          localStorage.removeItem(SAVE_KEY);
+        } catch (e) {}
+        newState();
+        tab = "court";
+        showPick();
+        renderAll();
+        toTop();
+        break;
+    }
+  }
+  document.addEventListener("dblclick", (e) => {
+    if (!/INPUT|TEXTAREA/.test(e.target.tagName)) e.preventDefault();
+  });
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".lang")) closeMenu();
+    const pk = e.target.closest("[data-pick]");
+    if (pk) {
+      startCareer(pk.dataset.pick === "f");
+      return;
+    }
+    const lg = e.target.closest("[data-lang]");
+    if (lg) {
+      setLang(lg.dataset.lang);
+      closeMenu();
+      return;
+    }
+    const tb = e.target.closest("[data-tab]");
+    if (tb) {
+      const k = tb.dataset.tab;
+      if ((k === "roster" || k === "club") && !S.un[k]) {
+        toast(T("T_unlock", fmt(UNL[k])));
+        return;
+      }
+      if (k === "legends" && !hofOpen()) {
+        toast(T("T_hofLocked", S.rings, HOF_TITLES));
+        return;
+      }
+      tab = k;
+      renderTabs();
+      toTop();
+      return;
+    }
+    const sp = e.target.closest("[data-speed]");
+    if (sp) {
+      S.speed = +sp.dataset.speed;
+      updateLive();
+      return;
+    }
+    const el = e.target.closest("[data-act]");
+    if (!el || el.disabled) return;
+    act(el.dataset.act, el);
+  });
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "saveBox") saveVal = e.target.value;
+  });
+  $("#teamName").addEventListener("input", (e) => {
+    S.name = e.target.value.trim() || (S.fem ? DEF_F : DEF_M);
+    S.season.teams[0].name = S.name;
+  });
+
+  /* ---------- boucle ---------- */
+  function away(sec) {
+    recalc();
+    const g = C.pps * Math.min(sec, 7200) * 0.5;
+    gain(g);
+    if (sec > 20) toast(T("T_away", fmt(g).toUpperCase()));
+  }
+  let lastT = performance.now(),
+    acc = 0,
+    saveAcc = 0;
+  function frame() {
+    const now = performance.now();
+    let dt = (now - lastT) / 1000;
+    lastT = now;
+    if (S.pending) return;
+    if (S.speed === 0) {
+      acc += dt;
+      if (acc > 0.25) {
+        acc = 0;
+        updateLive();
+      }
+      return;
+    }
+    if (dt > 3) {
+      away(dt);
+      dt = 0.1;
+    }
+    dt *= S.speed;
+    recalc();
+    gain(C.pps * dt);
+    {
+      const m = mult() * dt;
+      S.roster.forEach((p) => {
+        p.pts = (p.pts || 0) + pp(p.r) * m;
+      });
+    }
+    S.timer -= dt;
+    if (S.timer <= 0) {
+      S.timer = TICK;
+      playTick();
+    }
+    if (!bb.show && now > bb.next) {
+      bb.show = true;
+      bb.until = now + 9000;
+    } else if (bb.show && now > bb.until) {
+      bb.show = false;
+      bb.next = now + rnd(50000, 100000);
+    }
+    acc += dt;
+    if (acc > 0.25 * S.speed) {
+      acc = 0;
+      checkUnlocks();
+      checkHof();
+      updateLive();
+    }
+    saveAcc += dt;
+    if (saveAcc > 5 * S.speed) {
+      saveAcc = 0;
+      save();
+    }
+  }
+
+  /* ---------- démarrage ---------- */
+  S = load() || newState();
+  if (![1, 2, 3, 5].includes(S.speed)) S.speed = 1;
+  $("#langMenu").innerHTML =
+    `<button data-lang="fr">${flag("fr", "m1")}<span>Français</span></button><button data-lang="en">${flag("en", "m2")}<span>English</span></button>`;
+  applyStatic();
+  $("#teamName").value = S.name;
+  recalc();
+  if (!S.cur && S.season.phase !== "off") prepNext();
+  if (!S.pending) {
+    const d = (Date.now() - S.t) / 1000;
+    if (d > 30) {
+      const g = C.pps * Math.min(d, 7200) * 0.5;
+      gain(g);
+      setTimeout(() => toast(T("T_away", fmt(g).toUpperCase())), 500);
+    }
+  }
+  renderAll();
+  if (S.pending) showPick();
+  setInterval(frame, 100);
+  window.addEventListener("resize", setHdr);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(setHdr);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && !S.pending) save();
+  });
+  window.addEventListener("pagehide", () => {
+    if (!S.pending) save();
+  });
+})();
