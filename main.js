@@ -1415,12 +1415,16 @@
         if (v) {
           try {
             // Tolérant : retire le préfixe, les espaces, guillemets ou retours à la ligne ajoutés au collage.
+            // Si plusieurs codes sont collés l'un après l'autre, on garde le dernier.
+            const at = v.lastIndexOf("BD2:");
+            if (at >= 0) v = v.slice(at + 4);
             const tail = v.match(/~(\d+)\s*["']?\s*$/);
             if (tail) v = v.slice(0, tail.index);
-            v = v.replace(/^[^A-Za-z0-9+/=]*(BD2:)?/, "").replace(/[^A-Za-z0-9+/=]/g, "");
-            why = "base64, " + v.length + " car.";
-            if (tail && +tail[1] !== v.length) {
-              why = "code incomplet : " + v.length + "/" + tail[1] + " car.";
+            const pad = (v.match(/=*\s*$/) || [""])[0].replace(/\s/g, "").length;
+            v = v.replace(/[^A-Za-z0-9+/]/g, ""); // le remplissage "=" est facultatif pour atob
+            why = "base64, " + (v.length + pad) + " car.";
+            if (tail && +tail[1] !== v.length + pad) {
+              why = "code incomplet : " + (v.length + pad) + "/" + tail[1] + " car.";
               throw new Error(why);
             }
             const bin = atob(v);
