@@ -1081,7 +1081,9 @@
       <button class="btn ghost" data-act="reset">${armed === "reset" ? T("resetConfirm") : T("resetBtn")}</button></div>`,
     );
   }
+  let hofShown = false; // état du Hall of Fame au dernier affichage de l'onglet
   function renderLegends() {
+    hofShown = hofOpen();
     if (!hofOpen()) {
       const pct = Math.round((S.rings / HOF_TITLES) * 100);
       setHtml(
@@ -1134,7 +1136,8 @@
       <button class="btn pri" data-act="era" ${can ? "" : "disabled"}>${armed === "era" ? T("eraConfirm") : T("eraBtn")}</button>
       ${can ? "" : `<p>${T("eraLock", Math.min(S.rings, HOF_TITLES), HOF_TITLES)}</p>`}</div>`,
         ) +
-        goatPanel(),
+        goatPanel() +
+        coffeePanel(),
     );
   }
   function goatPanel() {
@@ -1148,6 +1151,15 @@
         row("g_l", S.legends.length, GOAT.l, fmt) +
         row("g_p", S.total, GOAT.p, fmt) +
         `</div>`,
+    );
+  }
+  const COFFEE_URL = "https://buymeacoffee.com/chondo";
+  /** Petite tasse en pixel art, dessinée pour le jeu. */
+  const COFFEE_ICON = `<svg class="cup" viewBox="0 0 12 12" aria-hidden="true"><path fill="#000" d="M2 4h6v5H2zM8 5h2v1h1v2h-1v1H8V8h1V6H8zM1 10h8v1H1z"/><path fill="#c68642" d="M3 5h4v1H3z"/><path fill="#e2231a" d="M3 1h1v2H3zM5 0h1v3H5z"/></svg>`;
+  function coffeePanel() {
+    return panel(
+      T("coffeeTitle"),
+      `<div class="card"><p>${T("coffeeTxt")}</p><a class="btn pri coffee" href="${COFFEE_URL}" target="_blank" rel="noopener noreferrer">${COFFEE_ICON}<span>${T("coffeeBtn")}</span></a></div>`,
     );
   }
   const TABS = ["court", "roster", "club", "season", "legends"];
@@ -1199,6 +1211,11 @@
     });
   }
   function updateLive() {
+    if (hofOpen() !== hofShown) {
+      // Le Hall of Fame vient de se débloquer : on redessine la page et l'onglet.
+      renderLegends();
+      renderTabs();
+    }
     $("#pts").textContent = fmt(S.pts);
     $("#pps").textContent = "+" + fmt(C.pps) + "/s";
     {
