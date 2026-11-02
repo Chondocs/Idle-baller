@@ -315,10 +315,11 @@
     const out = [],
       f = S.upg.form,
       n = 3 + S.upg.recr;
+    const avg = S.roster.length ? S.roster.reduce((t, p) => t + p.r, 0) / S.roster.length : 20;
     for (let i = 0; i < n; i++) {
       const o = {
-        // Les profils sont légèrement au-dessus de la note de l'équipe (la formation augmente l'écart).
-        r: clamp(Math.round(C.rating + 2 + f * 0.8 + rnd(-5, 5)), 18, 88),
+        // Les profils sont légèrement au-dessus du niveau moyen de l'effectif (la formation augmente l'écart).
+        r: clamp(Math.round(avg + 2 + f * 0.5 + rnd(-5, 5)), 18, 88),
         age: rnd(18, 30),
       };
       if (S.legends.length && Math.random() < 0.3) {
