@@ -600,7 +600,7 @@
     else if (p.age <= 33) d = -rnd(0, 2);
     else d = -rnd(1, 3);
     if (d < 0 && Math.random() < t * 0.06) d = 0;
-    if (d > 0 && p.r >= p.pot) d = 0;
+    if (d > 0) d = Math.min(d, Math.max(0, p.pot - p.r)); // jamais au-dessus du potentiel
     p.r = clamp(p.r + d, 5, 99);
     p.peak = Math.max(p.peak, p.r);
   }
@@ -839,6 +839,9 @@
           }
           if (!o.un) o.un = { roster: true, club: true, season: true };
           o.fem = !!o.fem;
+          o.roster.forEach((p) => {
+            if (p.pot < p.r) p.pot = p.r; // anciennes sauvegardes : potentiel dépassé
+          });
           if (o.aiBoost == null) o.aiBoost = Math.min(30, 1.5 * ((o.eraSeason || 1) - 1));
           o.titlesAll = Math.max(o.titlesAll || 0, o.rings || 0);
           if (o.eraTitles != null && o.rings > o.eraTitles) o.rings = o.eraTitles;
