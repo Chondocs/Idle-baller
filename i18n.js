@@ -189,6 +189,16 @@ function buildDict({ fmt, ord }) {
       coffeeTxt:
         "Buzzer Dynasty est gratuit et sans pub. Si le jeu te plaît, tu peux m'offrir un café, ça fait toujours plaisir !",
       coffeeBtn: "Buy me a coffee",
+      legalShort: "Jeu gratuit, sans pub. Aucune donnée personnelle n'est collectée.",
+      legalTitle: "Mentions légales et confidentialité",
+      legal1:
+        "Données : aucune donnée n'est collectée, envoyée ni vendue. Pas de compte, pas de cookies, pas de traceurs, pas de publicité. Ta partie est enregistrée uniquement dans le stockage local de ton navigateur, que tu peux effacer à tout moment. L'export et l'import de sauvegarde se font par copier-coller, sans serveur.",
+      legal2:
+        "Polices : le jeu charge ses polices (Chakra Petch et Jersey 15) depuis Google Fonts, ce qui transmet ton adresse IP à Google, comme pour toute police web.",
+      legal3:
+        "Contenu : les équipes, joueurs et joueuses sont fictifs. Toute ressemblance avec des personnes ou des clubs réels serait fortuite. Le jeu n'a aucun lien avec une ligue, un club ou une marque existants. Les contributions Buy Me a Coffee sont des dons volontaires, sans contrepartie dans le jeu.",
+      legal4:
+        "Éditeur : Chondo, particulier, projet non commercial (contact via buymeacoffee.com/chondo). Hébergement : GitHub Pages, GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis.",
     },
     en: {
       friendly: "Friendly",
@@ -362,6 +372,16 @@ function buildDict({ fmt, ord }) {
       coffeeTxt:
         "Buzzer Dynasty is free and ad-free. If you enjoy it, you can buy me a coffee, it's always appreciated!",
       coffeeBtn: "Buy me a coffee",
+      legalShort: "Free, ad-free game. No personal data is collected.",
+      legalTitle: "Legal notice and privacy",
+      legal1:
+        "Data: nothing is collected, sent or sold. No account, no cookies, no trackers, no ads. Your game is saved only in your browser's local storage, which you can clear at any time. Save export and import work by copy and paste, without any server.",
+      legal2:
+        "Fonts: the game loads its fonts (Chakra Petch and Jersey 15) from Google Fonts, which sends your IP address to Google, as with any web font.",
+      legal3:
+        "Content: teams and players are fictional. Any resemblance to real people or clubs would be a coincidence. The game has no link with any existing league, club or brand. Buy Me a Coffee contributions are voluntary donations with nothing in return in the game.",
+      legal4:
+        "Publisher: Chondo, individual, non-commercial project (contact via buymeacoffee.com/chondo). Hosting: GitHub Pages, GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA.",
     },
   };
 }
