@@ -1384,6 +1384,7 @@
         if (b) {
           b.focus();
           b.select();
+          b.setSelectionRange(0, b.value.length); // iOS : select() seul ne prend pas tout le texte
         }
         let ok = false;
         try {
@@ -1392,7 +1393,12 @@
             () => toast(T("sv_made")),
           );
           ok = true;
-        } catch (e) {}
+        } catch (e) {
+          try {
+            ok = document.execCommand("copy");
+            if (ok) toast(T("sv_copied"));
+          } catch (e2) {}
+        }
         if (!ok) toast(T("sv_made"));
         break;
       }
@@ -1401,8 +1407,9 @@
         let v = ((b && b.value) || saveVal).trim();
         let o = null;
         try {
-          if (v.startsWith("BD2:")) v = v.slice(4);
-          o = JSON.parse(decodeURIComponent(escape(atob(v.replace(/\s+/g, "")))));
+          // Tolérant : retire le préfixe, les espaces, guillemets ou retours à la ligne ajoutés au collage.
+          v = v.replace(/^[^A-Za-z0-9+/=]*(BD2:)?/, "").replace(/[^A-Za-z0-9+/=]/g, "");
+          o = JSON.parse(decodeURIComponent(escape(atob(v))));
         } catch (e) {}
         if (!o || o.v !== 2 || !o.season || !o.roster) {
           toast(T("sv_bad"));
