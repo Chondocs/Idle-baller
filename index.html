@@ -222,6 +222,7 @@ button{font:inherit;color:inherit}
       <span class="era" id="eraTag"></span>
     </div>
     <div class="speed" role="group" data-i-aria="ariaSpeed">
+      <button data-speed="0" aria-pressed="false" data-i-aria="ariaPause">II</button>
       <button data-speed="1" aria-pressed="true">x1</button>
       <button data-speed="2" aria-pressed="false">x2</button>
       <button data-speed="3" aria-pressed="false">x3</button>
@@ -300,7 +301,7 @@ function ord(n){
 const DICT={
 fr:{
   pts:'PTS',shoot:'TIRER',bb:'BUZZER BEATER !',fire:'EN FEU ! x2',
-  ariaName:'Nom du club',ariaSpeed:'Vitesse du jeu',ariaShoot:'Tirer au panier',ariaTabs:'Sections',ariaLang:'Langue',
+  ariaName:'Nom du club',ariaSpeed:'Vitesse du jeu',ariaPause:'Pause',ariaShoot:'Tirer au panier',ariaTabs:'Sections',ariaLang:'Langue',
   pickTitle:'Nouvelle carrière',pickHint:'Choisis ton équipe.',pickM:'Équipe masculine',pickF:'Équipe féminine',
   eraTag:(e,s)=>`ÈRE ${e} · SAISON ${s}`,
   tab_court:'Terrain',tab_roster:'Effectif',tab_club:'Club',tab_season:'Saison',tab_hof:'HOF',
@@ -356,7 +357,7 @@ fr:{
 },
 en:{
   pts:'PTS',shoot:'SHOOT',bb:'BUZZER BEATER!',fire:'ON FIRE! x2',
-  ariaName:'Club name',ariaSpeed:'Game speed',ariaShoot:'Shoot a basket',ariaTabs:'Sections',ariaLang:'Language',
+  ariaName:'Club name',ariaSpeed:'Game speed',ariaPause:'Pause',ariaShoot:'Shoot a basket',ariaTabs:'Sections',ariaLang:'Language',
   pickTitle:'New career',pickHint:'Choose your team.',pickM:"Men's team",pickF:"Women's team",
   eraTag:(e,s)=>`ERA ${e} · SEASON ${s}`,
   tab_court:'Court',tab_roster:'Roster',tab_club:'Club',tab_season:'Season',tab_hof:'HOF',
@@ -999,6 +1000,7 @@ function frame(){
   const now=performance.now();
   let dt=(now-lastT)/1000;lastT=now;
   if(S.pending)return;
+  if(S.speed===0){acc+=dt;if(acc>0.25){acc=0;updateLive();}return;}
   if(dt>3){away(dt);dt=0.1;}
   dt*=S.speed;
   recalc();
