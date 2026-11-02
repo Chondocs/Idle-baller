@@ -308,7 +308,7 @@
     p.peak = p.r;
     return p;
   }
-  const startRoster = () => [19, 21, 20, 22, 23].map((a) => genPlayer({ r: 20, age: a }));
+  const startRoster = () => [19, 21, 20, 22, 23].map((a) => genPlayer({ r: 25, age: a }));
   function genProspects() {
     const out = [],
       f = S.upg.form,
@@ -343,7 +343,7 @@
   const DIFF = 0.62;
   const UNL = { roster: 100, club: 1000, season: 5000 };
   const BASE_PPS = 0.26;
-  const pp = (r) => DIFF * 0.03 * Math.pow(r / 10, 3);
+  const pp = (r) => DIFF * 0.033 * Math.pow(r / 10, 3);
   const legacy = () => 1 + S.legends.length * 0.1;
   const titleMult = () => Math.pow(1.5, S.rings);
   const eraMult = () => 1 + 0.25 * (S.era - 1);
@@ -1486,11 +1486,19 @@
       return;
     }
     const sp = e.target.closest("[data-speed]");
+    const speedBar = $(".speed");
     if (sp) {
+      // Mobile : le premier appui déplie les vitesses, le second choisit et replie.
+      if (matchMedia("(max-width: 899px)").matches && !speedBar.classList.contains("open")) {
+        speedBar.classList.add("open");
+        return;
+      }
       S.speed = +sp.dataset.speed;
+      speedBar.classList.remove("open");
       updateLive();
       return;
     }
+    speedBar.classList.remove("open");
     const el = e.target.closest("[data-act]");
     if (!el || el.disabled) return;
     act(el.dataset.act, el);
