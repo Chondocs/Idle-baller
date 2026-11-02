@@ -618,7 +618,10 @@
       if (r) retired.push(p);
       return !r;
     });
-    retired.forEach((p) => log("L_retire", [nm(p)]));
+    retired.forEach((p) => {
+      syncLegend(p);
+      log("L_retire", [nm(p)]);
+    });
     S.seasonN++;
     S.eraSeason++;
     S.rerolls = 0;
@@ -628,6 +631,15 @@
     log("L_draft", [S.seasonN]);
   }
   /* Entrée au Hall of Fame dès que les critères sont remplis, sans attendre la retraite. */
+  /** Met à jour la fiche Hall of Fame d'un joueur avec ses statistiques actuelles. */
+  function syncLegend(p) {
+    const L = S.legends.find((l) => l.id === p.id);
+    if (!L) return;
+    L.peak = p.peak;
+    L.rings = p.rings;
+    L.pts = Math.round(p.pts);
+    L.seasons = p.seasons + 1;
+  }
   function checkHof() {
     let any = false;
     S.roster.forEach((p) => {
@@ -751,6 +763,7 @@
     save();
   }
   function newEra() {
+    S.roster.forEach(syncLegend);
     S.era++;
     S.eraSeason = 1;
     S.aiBoost = 0;
@@ -1104,7 +1117,7 @@
         const rings = live ? live.rings : L.rings,
           pts = live ? live.pts : L.pts,
           seasons = live ? live.seasons + 1 : L.seasons;
-        return `<article><div><strong>${esc(L.first + " " + L.last)}</strong><br><small>${T("peakLine", L.peak, fmt(pts || 0), seasons)}${live ? " · " + T("active") : ""}</small></div><span class="tag">${T("ringsTag", rings)}</span></article>`;
+        return `<article><div><strong>${esc(L.first + " " + L.last)}</strong><br><small>${T("peakLine", live ? live.peak : L.peak, fmt(pts || 0), seasons)}${live ? " · " + T("active") : ""}</small></div><span class="tag">${T("ringsTag", rings)}</span></article>`;
       })
       .join("");
     const hist = S.history
@@ -1469,7 +1482,10 @@
         }
         const p = S.roster.find((x) => x.id === id);
         S.roster = S.roster.filter((x) => x.id !== id);
-        if (p) log("L_release", [nm(p)]);
+        if (p) {
+          syncLegend(p);
+          log("L_release", [nm(p)]);
+        }
         renderAll();
         break;
       }
