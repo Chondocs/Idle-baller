@@ -1406,13 +1406,22 @@
         const b = $("#saveBox");
         let v = ((b && b.value) || saveVal).trim();
         let o = null;
-        try {
-          // Tolérant : retire le préfixe, les espaces, guillemets ou retours à la ligne ajoutés au collage.
-          v = v.replace(/^[^A-Za-z0-9+/=]*(BD2:)?/, "").replace(/[^A-Za-z0-9+/=]/g, "");
-          o = JSON.parse(decodeURIComponent(escape(atob(v))));
-        } catch (e) {}
+        let why = "vide";
+        if (v) {
+          try {
+            // Tolérant : retire le préfixe, les espaces, guillemets ou retours à la ligne ajoutés au collage.
+            v = v.replace(/^[^A-Za-z0-9+/=]*(BD2:)?/, "").replace(/[^A-Za-z0-9+/=]/g, "");
+            why = "base64, " + v.length + " car.";
+            const bin = atob(v);
+            why = "texte, " + bin.length + " oct.";
+            const json = decodeURIComponent(escape(bin));
+            why = "json, " + json.length + " car.";
+            o = JSON.parse(json);
+            why = "format";
+          } catch (e) {}
+        }
         if (!o || o.v !== 2 || !o.season || !o.roster) {
-          toast(T("sv_bad"));
+          toast(T("sv_bad") + " (" + why + ")");
           return;
         }
         if (armed !== "import") {
