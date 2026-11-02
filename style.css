@@ -250,6 +250,19 @@ button {
   background: var(--yellow);
   color: var(--ink);
 }
+/* Mobile : un seul bouton (la vitesse active), les autres apparaissent au toucher. */
+@media (max-width: 899px) {
+  .speed {
+    grid-template-columns: 44px;
+    justify-content: end;
+  }
+  .speed.open {
+    grid-template-columns: repeat(5, 36px);
+  }
+  .speed:not(.open) button[aria-pressed="false"] {
+    display: none;
+  }
+}
 
 #view {
   padding: 12px 0 calc(var(--tabsH, 56px) + 16px);
