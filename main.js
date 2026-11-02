@@ -302,10 +302,11 @@
       pts: 0,
       hof: false,
       son: o.son || null,
+      egg: !!o.egg,
     };
     const up =
       o.age <= 21 ? rnd(8, 22) : o.age <= 25 ? rnd(3, 10) : o.age <= 29 ? rnd(0, 4) : rnd(0, 1);
-    p.pot = clamp(p.r + up + (o.potBonus || 0), p.r, 95);
+    p.pot = o.egg ? 99 : clamp(p.r + up + (o.potBonus || 0), p.r, 95);
     p.peak = p.r;
     return p;
   }
@@ -316,7 +317,8 @@
       n = 3 + S.upg.recr;
     for (let i = 0; i < n; i++) {
       const o = {
-        r: clamp(Math.round(22 + f * 3.5 + S.eraSeason * 1.6 + rnd(-6, 8)), 18, 88),
+        // Les profils sont légèrement au-dessus de la note de l'équipe (la formation augmente l'écart).
+        r: clamp(Math.round(C.rating + 2 + f * 0.8 + rnd(-5, 5)), 18, 88),
         age: rnd(18, 30),
       };
       if (S.legends.length && Math.random() < 0.3) {
@@ -328,6 +330,22 @@
         o.age = rnd(18, 21);
       }
       out.push(genPlayer(o));
+    }
+    // Easter egg : à recrutement maximal, 1 % de chance de tomber sur le créateur du jeu.
+    const taken = S.roster.some((p) => p.egg) || S.legends.some((l) => l.egg);
+    if (
+      !S.fem &&
+      S.upg.recr >= UPG.find((u) => u.id === "recr").max &&
+      !taken &&
+      Math.random() < 0.01
+    ) {
+      out[rnd(0, out.length - 1)] = genPlayer({
+        first: "Charles",
+        last: "Nourry",
+        r: 90,
+        age: rnd(19, 22),
+        egg: true,
+      });
     }
     return out;
   }
@@ -388,7 +406,16 @@
       champ: null,
     };
   }
-  const aiLevel = () => Math.min(95, Math.max(34 + 6 * (S.eraSeason - 1), 0.92 * C.rating));
+  /**
+   * Niveau moyen des adversaires. Il progresse avec les résultats du club (S.aiBoost) :
+   * rien si on rate les playoffs, un peu si on s'y qualifie, davantage avec un titre.
+   * Il ne descend jamais sous 92 % de la note de l'équipe, pour qu'un club dominant reste défié.
+   */
+  const AI_BASE = 34,
+    AI_BOOST_PLAYOFFS = 2,
+    AI_BOOST_TITLE = 5,
+    AI_BOOST_MAX = 60;
+  const aiLevel = () => Math.min(95, Math.max(AI_BASE + S.aiBoost, 0.92 * C.rating));
   const teamR = (i) => (i === 0 ? C.rating : aiLevel() + S.season.teams[i].ovr);
   function simGame(ra, rb, me) {
     let p = 1 / (1 + Math.exp(-(ra - rb) / 5));
@@ -547,6 +574,8 @@
       t = se.teams[0];
     se.phase = "off";
     se.champ = champ;
+    const boost = champ === 0 ? AI_BOOST_TITLE : res === "out" ? 0 : AI_BOOST_PLAYOFFS;
+    S.aiBoost = Math.min(AI_BOOST_MAX, S.aiBoost + boost);
     S.history.push({ n: se.n, champ: se.teams[champ].name, res, rec: `${t.w}-${t.l}`, era: S.era });
     if (S.history.length > 30) S.history.shift();
     if (champ === 0) {
@@ -612,6 +641,7 @@
           rings: p.rings,
           pts: Math.round(p.pts),
           seasons: p.seasons + 1,
+          egg: p.egg,
         });
         log("L_hofIn", [nm(p)], "gold");
         toast(T("T_hofIn", nm(p).toUpperCase()));
@@ -721,6 +751,7 @@
   function newEra() {
     S.era++;
     S.eraSeason = 1;
+    S.aiBoost = 0;
     S.eraTitles = 0;
     S.rings = 0;
     S.pts = 0;
@@ -749,6 +780,7 @@
       un: { roster: false, club: false, season: false },
       era: 1,
       eraSeason: 1,
+      aiBoost: 0,
       seasonN: 1,
       rings: 0,
       eraTitles: 0,
@@ -806,6 +838,7 @@
           }
           if (!o.un) o.un = { roster: true, club: true, season: true };
           o.fem = !!o.fem;
+          if (o.aiBoost == null) o.aiBoost = Math.min(30, 1.5 * ((o.eraSeason || 1) - 1));
           o.titlesAll = Math.max(o.titlesAll || 0, o.rings || 0);
           if (o.eraTitles != null && o.rings > o.eraTitles) o.rings = o.eraTitles;
           o.hofUnlocked = !!o.hofUnlocked || o.rings >= HOF_TITLES;
@@ -830,8 +863,10 @@
   }
   function avatar(p) {
     const h = hash(p.id);
-    const skin = ["#f1c27d", "#e0a96d", "#c68642", "#8d5524", "#5c3a1e"][h % 5];
-    const hair = ["#111", "#3b2314", "#111", "#7a4a21", "#d9b13b"][(h >> 3) % 5];
+    const skin = p.egg ? "#f1c27d" : ["#f1c27d", "#e0a96d", "#c68642", "#8d5524", "#5c3a1e"][h % 5];
+    const hair = p.egg
+      ? "#3b2314"
+      : ["#111", "#3b2314", "#111", "#7a4a21", "#d9b13b"][(h >> 3) % 5];
     const hs = (h >> 6) % 3;
     let hairR;
     if (S.fem)
