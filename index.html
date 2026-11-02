@@ -1,7 +1,13 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Buzzer Dynasty">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#070f45">
 <title>Buzzer Dynasty</title>
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Jersey+15&display=swap');
 /* Borne d'arcade 1993 adoucie : nuit bleue, panneaux à bordure blanche et ombre dure, titres rouges jaunes. Mobile : onglets ; grand écran : tout sur une page en 2 ou 3 colonnes. Thème unique voulu. */
@@ -24,7 +30,7 @@ body{margin:0;color:var(--white);font:500 16px/1.3 var(--tx);
   -webkit-tap-highlight-color:transparent}
 html{background:var(--navy)}
 body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:30;background:repeating-linear-gradient(0deg,rgba(0,0,0,.06) 0 1px,transparent 1px 3px)}
-#app{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#app{position:absolute;inset:0;padding-top:env(safe-area-inset-top,0px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 #app>*{max-width:560px;margin-left:auto;margin-right:auto}
 #app>.tabs{max-width:none;margin:0}
 button{font:inherit;color:inherit}
@@ -184,7 +190,7 @@ button{font:inherit;color:inherit}
   .pl-id{display:block}
   .pl-id strong{display:block;font-size:14px;line-height:1.15}
   .pl-id small,.pl-id em{display:inline;font-size:12px;line-height:1.2}
-  .pl:not(.has-rings) .mq{display:none}
+  .pl .mq{display:none}
   .pl-id em::before{content:" · ";color:var(--mute)}
   .pl-r{display:flex;align-items:center;gap:8px}
   .rt{font-size:23px}
