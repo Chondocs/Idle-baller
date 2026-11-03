@@ -908,7 +908,8 @@
   }
 
   /* ========== Événements aléatoires ========== */
-  const EVENT_CHANCE = 0.12; // tirage à chaque fin de saison
+  const EVENT_CHANCE = 0.17; // tirage à chaque fin de saison
+  const EVENT_CHAIN_CHANCE = 0.01; // chance d'un événement la saison suivant un autre
   const EVENT_MIN_SEASON = 3; // jamais avant la saison 3 d'une ère
   const STRIKE_LOSSES = 5;
   const STRIKE_PRICE = 0.2; // +20 % sur les signatures, par grève, jusqu'à la fin de l'ère
@@ -984,11 +985,9 @@
 
   /** Tire au sort un événement en fin de saison (au plus un tous les deux ans, jamais en début d'ère). */
   function rollEvent() {
-    if (S.evtCool > 0) {
-      S.evtCool--;
-      return;
-    }
-    if (!S.un.season || S.eraSeason < EVENT_MIN_SEASON || Math.random() >= EVENT_CHANCE) return;
+    const chance = S.evtCool > 0 ? EVENT_CHAIN_CHANCE : EVENT_CHANCE;
+    if (S.evtCool > 0) S.evtCool--;
+    if (!S.un.season || S.eraSeason < EVENT_MIN_SEASON || Math.random() >= chance) return;
     const pool = EVENTS.filter((e) => !e.ok || e.ok());
     let x = Math.random() * pool.reduce((t, e) => t + e.w, 0);
     const ev = pool.find((e) => (x -= e.w) < 0) || pool[0];
