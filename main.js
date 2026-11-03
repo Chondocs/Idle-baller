@@ -1196,8 +1196,6 @@
     const cap = CARE_CAPS[S.careTier],
       scale = Math.pow(10, S.careTier),
       left = cap - S.care;
-    const base = Math.round(50 * (S.era - 1)),
-      now = Math.round(50 * (S.era - 1) * (1 + careFrac()));
     const btns = CARE_AMOUNTS.map((a) => {
       const amt = a * scale;
       return `<button class="btn" data-act="care" data-amt="${amt}" data-cost="${Math.min(amt, left)}" data-block="0">${fmt(amt)}</button>`;
@@ -1207,7 +1205,6 @@
       `<div class="card"><p>${T("careTxt", fmt(cap / 1000))}</p>
       <small>${fmt(S.care)} / ${fmt(cap)}</small>
       <div class="meter"><i style="width:${Math.min(100, (S.care / cap) * 100)}%"></i></div>
-      <p>${T("careBonus", now, base)}</p>
       <div class="care-btns">${btns}</div></div>`,
     );
   }

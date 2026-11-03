@@ -237,7 +237,6 @@ function buildDict({ fmt, ord }) {
       careLock: "Disponible à partir de la 2e ère.",
       careTxt: (step) =>
         `Verse des points à des œuvres caritatives. Chaque tranche de ${step} versée ajoute +0,1 % au bonus d'ère. Caisse pleine : le bonus d'ère est doublé, puis une caisse dix fois plus grosse s'ouvre.`,
-      careBonus: (now, base) => `Bonus d'ère : +${now} % (au lieu de +${base} %)`,
       careEnd: "Toutes les caisses sont pleines. Il n'y a plus personne à sauver.",
       pop_care1_t: "Caisse de Care pleine !",
       pop_care1_b:
@@ -471,7 +470,6 @@ function buildDict({ fmt, ord }) {
       careLock: "Available from the 2nd era.",
       careTxt: (step) =>
         `Donate points to charities. Every ${step} donated adds +0.1% to the era bonus. When the fund is full, the era bonus is doubled and a fund ten times bigger opens.`,
-      careBonus: (now, base) => `Era bonus: +${now}% (instead of +${base}%)`,
       careEnd: "Every fund is full. There is no one left to save.",
       pop_care1_t: "Care fund full!",
       pop_care1_b:
