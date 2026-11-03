@@ -366,7 +366,14 @@
   const pp = (r) => DIFF * 0.033 * Math.pow(r / 10, 3);
   const legacy = () => 1 + S.legends.length * 0.1;
   const titleMult = () => Math.pow(1.5, S.rings);
-  const eraMult = () => 1 + 0.5 * (S.era - 1);
+  /* Caisse de Care : on y verse des points ; plus elle est remplie, plus le bonus d'ère grossit. */
+  const CARE_CAPS = [1e9, 1e10, 1e11, 1e12, 1e13]; // 5 caisses successives, chacune 10 fois plus grosse
+  const CARE_AMOUNTS = [1e5, 5e7, 1e8, 2.5e8]; // montants proposés (x10 à chaque caisse)
+  const careDone = () => S.careTier >= CARE_CAPS.length;
+  /** Avancement total : 1 par caisse remplie + la fraction de la caisse en cours (+0,1 % par millième). */
+  const careFrac = () => S.careTier + (careDone() ? 0 : S.care / CARE_CAPS[S.careTier]);
+  const eraBonus = () => 0.5 * (S.era - 1) * (1 + careFrac());
+  const eraMult = () => 1 + eraBonus();
   const mult = () => (1 + 0.12 * S.upg.coach) * titleMult() * legacy() * eraMult();
   const flat = () => BASE_PPS + (S.upg.arena ? DIFF * 3 * Math.pow(S.upg.arena, 1.25) : 0);
   function recalc() {
@@ -797,6 +804,8 @@
       era: 1,
       eraSeason: 1,
       aiBoost: 0,
+      care: 0,
+      careTier: 0,
       seasonN: 1,
       rings: 0,
       eraTitles: 0,
@@ -854,6 +863,8 @@
           }
           if (!o.un) o.un = { roster: true, club: true, season: true };
           o.fem = !!o.fem;
+          o.care = o.care || 0;
+          o.careTier = o.careTier || 0;
           // Anciennes légendes sans ère : celles encore dans l'effectif datent de l'ère en cours
           // (l'effectif est vidé à chaque ère), les autres sont affichées « Ère pré-merge ».
           (o.legends || []).forEach((L) => {
@@ -1030,6 +1041,34 @@
         `</div>`,
     );
   }
+  function carePanel() {
+    if (S.era < 2) {
+      return panel(
+        `${T("careTitle")} <small>${T("lkLabel")}</small>`,
+        `<div class="card"><p>${T("careLock")}</p></div>`,
+      );
+    }
+    if (careDone()) {
+      return panel(T("careTitle"), `<div class="card"><p>${T("careEnd")}</p></div>`);
+    }
+    const cap = CARE_CAPS[S.careTier],
+      scale = Math.pow(10, S.careTier),
+      left = cap - S.care;
+    const base = Math.round(50 * (S.era - 1)),
+      now = Math.round(50 * (S.era - 1) * (1 + careFrac()));
+    const btns = CARE_AMOUNTS.map((a) => {
+      const amt = a * scale;
+      return `<button class="btn" data-act="care" data-amt="${amt}" data-cost="${Math.min(amt, left)}" data-block="0">${fmt(amt)}</button>`;
+    }).join("");
+    return panel(
+      `${T("careTitle")} <small>${T("careTier", S.careTier + 1, CARE_CAPS.length)}</small>`,
+      `<div class="card"><p>${T("careTxt", fmt(cap / 1000))}</p>
+      <small>${fmt(S.care)} / ${fmt(cap)}</small>
+      <div class="meter"><i style="width:${Math.min(100, (S.care / cap) * 100)}%"></i></div>
+      <p>${T("careBonus", now, base)}</p>
+      <div class="care-btns">${btns}</div></div>`,
+    );
+  }
   function renderClub() {
     if (!S.un.club) {
       setHtml($("#sec-club"), lockPanel("club", T("facilities")));
@@ -1049,7 +1088,7 @@
           return `<article class="up"><div><strong>${T("u_" + u.id)}</strong><span class="lvl">${T("lvl", l)}</span><p>${T("d_" + u.id, l)}</p></div>
       <button class="btn pri" data-act="buy" data-u="${u.id}" data-cost="${c}" data-block="${maxed ? 1 : 0}">${maxed ? T("max") : fmt(c)}</button></article>`;
         }).join("")}</div>`,
-      ),
+      ) + carePanel(),
     );
   }
   function renderSeason() {
@@ -1495,6 +1534,23 @@
           log("L_release", [nm(p)]);
         }
         renderAll();
+        break;
+      }
+      case "care": {
+        if (careDone()) return;
+        const cap = CARE_CAPS[S.careTier];
+        const give = Math.min(+el.dataset.amt, cap - S.care, S.pts);
+        if (give <= 0) return;
+        S.pts -= give;
+        S.care += give;
+        if (S.care >= cap - 0.5) {
+          S.care = 0;
+          S.careTier++;
+          popQ.push("care" + S.careTier);
+          showNextPop();
+        }
+        renderAll();
+        save();
         break;
       }
       case "buy": {

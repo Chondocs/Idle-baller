@@ -191,6 +191,28 @@ function buildDict({ fmt, ord }) {
       coffeeTxt:
         "Buzzer Dynasty est gratuit et sans pub. Si le jeu te plaît, tu peux m'offrir un café, ça fait toujours plaisir !",
       coffeeBtn: "Buy me a coffee",
+      careTitle: "Caisse de Care",
+      careTier: (n, t) => `Caisse ${n}/${t}`,
+      careLock: "Disponible à partir de la 2e ère.",
+      careTxt: (step) =>
+        `Verse des points à des œuvres caritatives. Chaque tranche de ${step} versée ajoute +0,1 % au bonus d'ère. Caisse pleine : le bonus d'ère est doublé, puis une caisse dix fois plus grosse s'ouvre.`,
+      careBonus: (now, base) => `Bonus d'ère : +${now} % (au lieu de +${base} %)`,
+      careEnd: "Toutes les caisses sont pleines. Il n'y a plus personne à sauver.",
+      pop_care1_t: "Caisse de Care pleine !",
+      pop_care1_b:
+        "Bien joué ! Avec votre montagne de points, vous avez sorti 150 familles de la pauvreté. Bien évidemment, vu le prix des places pour les matchs de l'équipe, jamais elles ne pourront remercier le club, mais vous êtes un sauveur. Bonus d'ère doublé. Prochaine caisse : 10 Md.",
+      pop_care2_t: "Deuxième caisse pleine !",
+      pop_care2_b:
+        "1 500 familles sorties de la pauvreté. Elles sont ravies d'apprendre que le maillot de l'équipe coûte 140 €. Un communiqué de presse a été publié : il est très émouvant. Prochaine caisse : 100 Md.",
+      pop_care3_t: "Troisième caisse pleine !",
+      pop_care3_b:
+        "15 000 familles, soit une petite ville entière. Le maire vous remercie et propose de donner votre nom à la salle, moyennant un sponsoring raisonnable. Prochaine caisse : 1 000 Md.",
+      pop_care4_t: "Quatrième caisse pleine !",
+      pop_care4_b:
+        "150 000 familles. Votre nom est cité dans un discours officiel, et votre comptable parle déjà d'optimisation fiscale. Prochaine caisse : 10 000 Md.",
+      pop_care5_t: "Dernière caisse pleine !",
+      pop_care5_b:
+        "Ça y est : vous avez sorti tous les humains de la pauvreté. Ils attendent désormais la destruction de la planète que vous avez causée avec tous vos caprices.",
       legalShort: "Jeu gratuit, sans pub. Aucune donnée personnelle n'est collectée.",
       legalTitle: "Mentions légales et confidentialité",
       legal1:
@@ -376,6 +398,28 @@ function buildDict({ fmt, ord }) {
       coffeeTxt:
         "Buzzer Dynasty is free and ad-free. If you enjoy it, you can buy me a coffee, it's always appreciated!",
       coffeeBtn: "Buy me a coffee",
+      careTitle: "Care fund",
+      careTier: (n, t) => `Fund ${n}/${t}`,
+      careLock: "Available from the 2nd era.",
+      careTxt: (step) =>
+        `Donate points to charities. Every ${step} donated adds +0.1% to the era bonus. When the fund is full, the era bonus is doubled and a fund ten times bigger opens.`,
+      careBonus: (now, base) => `Era bonus: +${now}% (instead of +${base}%)`,
+      careEnd: "Every fund is full. There is no one left to save.",
+      pop_care1_t: "Care fund full!",
+      pop_care1_b:
+        "Well done! With your mountain of points, you lifted 150 families out of poverty. Of course, given the price of tickets to the team's games, they will never be able to thank the club, but you are a savior. Era bonus doubled. Next fund: 10B.",
+      pop_care2_t: "Second fund full!",
+      pop_care2_b:
+        "1,500 families lifted out of poverty. They are delighted to learn that the team jersey costs $150. A press release was published: it is very moving. Next fund: 100B.",
+      pop_care3_t: "Third fund full!",
+      pop_care3_b:
+        "15,000 families, a small town. The mayor thanks you and offers to name the arena after you, in exchange for a reasonable sponsorship. Next fund: 1,000B.",
+      pop_care4_t: "Fourth fund full!",
+      pop_care4_b:
+        "150,000 families. Your name is mentioned in an official speech, and your accountant is already talking about tax optimization. Next fund: 10,000B.",
+      pop_care5_t: "Final fund full!",
+      pop_care5_b:
+        "That's it: you have lifted every human out of poverty. They are now waiting for the destruction of the planet you caused with all your whims.",
       legalShort: "Free, ad-free game. No personal data is collected.",
       legalTitle: "Legal notice and privacy",
       legal1:
