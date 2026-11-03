@@ -353,7 +353,7 @@
   function signCost(p) {
     let c = 3 * Math.pow(1.14, p.r) * (1 + Math.max(0, p.pot - p.r) * 0.03);
     if (p.age >= 31) c *= 0.7;
-    c *= (1 - 0.05 * S.upg.agent) * 0.9;
+    c *= (1 - 0.05 * S.upg.agent) * 0.9 * (1 + STRIKE_PRICE * S.strikes);
     return Math.max(10, Math.round(c));
   }
   const upCost = (u) => Math.round(0.9 * u.base * Math.pow(u.g, S.upg[u.id]));
@@ -383,7 +383,7 @@
       b += pp(p.r);
       sum += p.r;
     });
-    C.pps = (b + flat()) * mult();
+    C.pps = S.epidemic ? 0 : (b + flat()) * mult(); // huis clos : plus de revenus passifs
     C.click =
       DIFF *
       (1 + 1.5 * S.upg.shoot + 0.06 * C.pps) *
@@ -478,7 +478,11 @@
     }
     if (se.phase === "reg") {
       opp = se.sched[se.game];
-      S.cur = { opp, lab: { k: "day", n: se.game + 1 }, r: simGame(C.rating, teamR(opp), true) };
+      S.cur = {
+        opp,
+        lab: { k: "day", n: se.game + 1 },
+        r: rig(simGame(C.rating, teamR(opp), true)),
+      };
     } else if (se.phase === "po") {
       const po = se.po;
       if (po.round === 0) {
@@ -488,7 +492,7 @@
       S.cur = {
         opp,
         lab: { k: po.round === 0 ? "semi" : "final" },
-        r: simGame(C.rating, teamR(opp), true),
+        r: rig(simGame(C.rating, teamR(opp), true)),
       };
     } else S.cur = null;
   }
@@ -613,6 +617,7 @@
   }
   function offseason() {
     const retired = [];
+    S.epidemic = false; // l'épidémie ne dure qu'une saison
     S.roster.forEach((p) => {
       p.age++;
       p.seasons++;
@@ -636,6 +641,7 @@
     S.season = newSeason();
     S.last = null;
     log("L_draft", [S.seasonN]);
+    rollEvent();
   }
   /* Entrée au Hall of Fame dès que les critères sont remplis, sans attendre la retraite. */
   /** Met à jour la fiche Hall of Fame d'un joueur avec ses statistiques actuelles. */
@@ -775,6 +781,10 @@
     S.era++;
     S.eraSeason = 1;
     S.aiBoost = 0;
+    S.strike = 0;
+    S.strikes = 0;
+    S.epidemic = false;
+    S.event = null;
     S.eraTitles = 0;
     S.rings = 0;
     S.pts = 0;
@@ -806,6 +816,11 @@
       aiBoost: 0,
       care: 0,
       careTier: 0,
+      strike: 0,
+      strikes: 0,
+      epidemic: false,
+      evtCool: 0,
+      event: null,
       seasonN: 1,
       rings: 0,
       eraTitles: 0,
@@ -863,6 +878,11 @@
           }
           if (!o.un) o.un = { roster: true, club: true, season: true };
           o.fem = !!o.fem;
+          o.strike = o.strike || 0;
+          o.strikes = o.strikes || 0;
+          o.epidemic = !!o.epidemic;
+          o.evtCool = o.evtCool || 0;
+          o.event = o.event || null;
           o.care = o.care || 0;
           o.careTier = o.careTier || 0;
           // Anciennes légendes sans ère : celles encore dans l'effectif datent de l'ère en cours
@@ -885,6 +905,128 @@
       }
     } catch (e) {}
     return null;
+  }
+
+  /* ========== Événements aléatoires ========== */
+  const EVENT_CHANCE = 0.12; // tirage à chaque fin de saison
+  const EVENT_MIN_SEASON = 3; // jamais avant la saison 3 d'une ère
+  const STRIKE_LOSSES = 5;
+  const STRIKE_PRICE = 0.2; // +20 % sur les signatures, par grève, jusqu'à la fin de l'ère
+  const FIRE_UPGRADES = ["coach", "train", "form", "scout", "mascot"];
+
+  /** Transforme un résultat de match en défaite tant que la grève dure. */
+  function rig(r) {
+    if (S.strike <= 0) return r;
+    S.strike--;
+    return r.aWin ? { a: r.b, b: r.a, aWin: false } : r;
+  }
+  const bestPlayer = () => S.roster.reduce((a, b) => (b.r > a.r ? b : a));
+
+  /** Chaque événement : poids de tirage, condition, et effet (renvoie les données du popup). */
+  const EVENTS = [
+    {
+      id: "strike",
+      w: 28,
+      make() {
+        S.strike += STRIKE_LOSSES;
+        S.strikes++;
+        if (S.cur && !S.cur.friendly) S.cur.r = rig(S.cur.r);
+        return {};
+      },
+    },
+    {
+      id: "epidemic",
+      w: 28,
+      make() {
+        S.epidemic = true;
+        return {};
+      },
+    },
+    {
+      id: "fire",
+      w: 14,
+      ok: () => FIRE_UPGRADES.some((k) => S.upg[k] > 0),
+      make() {
+        FIRE_UPGRADES.forEach((k) => (S.upg[k] = 0));
+        return {};
+      },
+    },
+    {
+      id: "bet",
+      w: 15,
+      ok: () => S.roster.length >= 2,
+      make() {
+        const p = pick(S.roster);
+        const legend = S.legends.find((l) => l.id === p.id);
+        if (legend) {
+          syncLegend(p);
+          legend.banned = true;
+        }
+        S.roster = S.roster.filter((x) => x.id !== p.id);
+        return { name: nm(p), hof: !!legend };
+      },
+    },
+    {
+      id: "transfer",
+      w: 15,
+      ok: () => S.roster.length >= 2,
+      make() {
+        const p = bestPlayer();
+        return {
+          pid: p.id,
+          name: nm(p),
+          r: p.r,
+          price: Math.max(1000, 4 * signCost(p), 600 * C.pps),
+        };
+      },
+    },
+  ];
+
+  /** Tire au sort un événement en fin de saison (au plus un tous les deux ans, jamais en début d'ère). */
+  function rollEvent() {
+    if (S.evtCool > 0) {
+      S.evtCool--;
+      return;
+    }
+    if (!S.un.season || S.eraSeason < EVENT_MIN_SEASON || Math.random() >= EVENT_CHANCE) return;
+    const pool = EVENTS.filter((e) => !e.ok || e.ok());
+    let x = Math.random() * pool.reduce((t, e) => t + e.w, 0);
+    const ev = pool.find((e) => (x -= e.w) < 0) || pool[0];
+    S.evtCool = 1;
+    S.event = Object.assign({ t: ev.id }, ev.make());
+    log("L_event", [ev.id], "bad");
+    recalc();
+    showEvent();
+  }
+  /** Affiche le popup de l'événement en cours ; le jeu reste en pause tant qu'il est ouvert. */
+  function showEvent() {
+    const e = S.event;
+    if (!e) return;
+    $("#evtT").textContent = T("evt_" + e.t + "_t");
+    $("#evtB").textContent = T("evt_" + e.t + "_b", e);
+    $("#evtBtns").innerHTML =
+      e.t === "transfer"
+        ? `<button class="btn pri big" data-act="evtyes">${T("evtYes")}</button><button class="btn big" data-act="evtno">${T("evtNo")}</button>`
+        : `<button class="btn pri big" data-act="evtok">${T("popOk")}</button>`;
+    $("#evt").hidden = false;
+    setHdr();
+  }
+  function closeEvent(sell) {
+    const e = S.event;
+    if (e && sell && e.t === "transfer") {
+      const p = S.roster.find((x) => x.id === e.pid);
+      if (p && S.roster.length > 1) {
+        syncLegend(p);
+        S.roster = S.roster.filter((x) => x.id !== p.id);
+        gain(e.price);
+        toast(T("T_sold", fmt(e.price).toUpperCase()));
+      }
+    }
+    S.event = null;
+    $("#evt").hidden = true;
+    recalc();
+    renderAll();
+    save();
   }
 
   /* ========== 6. Rendu, actions, boucle ========== */
@@ -1164,7 +1306,7 @@
         const rings = live ? live.rings : L.rings,
           pts = live ? live.pts : L.pts,
           seasons = live ? live.seasons + 1 : L.seasons;
-        return `<article><div><strong>${esc(L.first + " " + L.last)}</strong><br><small>${L.era ? T("eraOf", L.era) : T("eraUpTo", L.eraMax)} · ${T("peakLine", live ? live.peak : L.peak, fmt(pts || 0), seasons)}${live ? " · " + T("active") : ""}</small></div><span class="tag">${T("ringsTag", rings)}</span></article>`;
+        return `<article${L.banned ? ` class="banned" data-ban="${T("banned")}"` : ""}><div><strong>${esc(L.first + " " + L.last)}</strong><br><small>${L.era ? T("eraOf", L.era) : T("eraUpTo", L.eraMax)} · ${T("peakLine", live ? live.peak : L.peak, fmt(pts || 0), seasons)}${live ? " · " + T("active") : ""}</small></div><span class="tag">${T("ringsTag", rings)}</span></article>`;
       })
       .join("");
     const hist = S.history
@@ -1536,6 +1678,15 @@
         renderAll();
         break;
       }
+      case "evtok":
+        closeEvent(false);
+        break;
+      case "evtyes":
+        closeEvent(true);
+        break;
+      case "evtno":
+        closeEvent(false);
+        break;
       case "care": {
         if (careDone()) return;
         const cap = CARE_CAPS[S.careTier];
@@ -1700,7 +1851,7 @@
     const now = performance.now();
     let dt = (now - lastT) / 1000;
     lastT = now;
-    if (S.pending) return;
+    if (S.pending || S.event) return;
     if (S.speed === 0) {
       acc += dt;
       if (acc > 0.25) {
@@ -1719,7 +1870,7 @@
     {
       const m = mult() * dt;
       S.roster.forEach((p) => {
-        p.pts = (p.pts || 0) + pp(p.r) * m;
+        if (!S.epidemic) p.pts = (p.pts || 0) + pp(p.r) * m;
       });
     }
     S.timer -= dt;
@@ -1767,6 +1918,7 @@
   }
   renderAll();
   if (S.pending) showPick();
+  else if (S.event) showEvent();
   setInterval(frame, 100);
   window.addEventListener("resize", setHdr);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(setHdr);

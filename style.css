@@ -686,6 +686,36 @@ button {
   gap: 8px;
   margin-top: 8px;
 }
+#evtBtns {
+  display: grid;
+  gap: 8px;
+}
+.hof article {
+  position: relative;
+}
+.hof article.banned > div strong {
+  text-decoration: line-through;
+  text-decoration-color: var(--red);
+  text-decoration-thickness: 3px;
+}
+.hof article.banned .tag {
+  display: none;
+}
+.hof article.banned::after {
+  content: attr(data-ban);
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-8deg);
+  font: 400 18px/1 var(--px);
+  letter-spacing: 0.06em;
+  color: var(--red);
+  border: 3px solid var(--red);
+  border-radius: 4px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
 a.btn {
   display: block;
   text-align: center;

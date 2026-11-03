@@ -191,6 +191,47 @@ function buildDict({ fmt, ord }) {
       coffeeTxt:
         "Buzzer Dynasty est gratuit et sans pub. Si le jeu te plaît, tu peux m'offrir un café, ça fait toujours plaisir !",
       coffeeBtn: "Buy me a coffee",
+      banned: "BANNI À VIE",
+      evtYes: "Accepter",
+      evtNo: "Refuser",
+      T_sold: (p) => `TRANSFERT : +${p}`,
+      L_event: (id) =>
+        ({
+          strike: "Grève des joueurs.",
+          epidemic: "Épidémie : matchs à huis clos.",
+          fire: "Incendies massifs : le centre est détruit.",
+          bet: "Affaire de paris truqués.",
+          transfer: "Offre de transfert.",
+        })[id],
+      evt_strike_t: "Grève des joueurs !",
+      evt_strike_b: [
+        () =>
+          "Les joueurs refusent de jouer tant que leurs contrats ne sont pas revus. Les 5 prochains matchs sont perdus. Ils ont aussi négocié leurs contrats à la hausse : les recrutements coûtent 20 % de plus jusqu'à la fin de l'ère.",
+        () =>
+          "Les joueuses refusent de jouer tant que leurs contrats ne sont pas revus. Les 5 prochains matchs sont perdus. Elles ont aussi négocié leurs contrats à la hausse : les recrutements coûtent 20 % de plus jusqu'à la fin de l'ère.",
+      ],
+      evt_epidemic_t: "Épidémie !",
+      evt_epidemic_b:
+        "Les restrictions sanitaires imposent le huis clos. Les stades restent vides : vos points par seconde tombent à 0 pendant toute la saison. Les tirs, eux, continuent de rapporter.",
+      evt_fire_t: "Incendies massifs !",
+      evt_fire_b: [
+        "Le centre d'entraînement a pris feu. L'entraîneur, le préparateur, le centre de formation, l'analyste vidéo et la mascotte repartent de zéro : il faut tout reconstruire.",
+        "Le centre d'entraînement a pris feu. L'entraîneuse, la préparatrice, le centre de formation, l'analyste vidéo et la mascotte repartent de zéro : il faut tout reconstruire.",
+      ],
+      evt_bet_t: "Affaire de paris truqués !",
+      evt_bet_b: [
+        (e) =>
+          `${e.name} a été pris en train de parier contre son propre club. La ligue le suspend à vie.${e.hof ? " Son nom reste au Hall of Fame, mais plus pour les bonnes raisons." : ""}`,
+        (e) =>
+          `${e.name} a été prise en train de parier contre son propre club. La ligue la suspend à vie.${e.hof ? " Son nom reste au Hall of Fame, mais plus pour les bonnes raisons." : ""}`,
+      ],
+      evt_transfer_t: "Offre de transfert !",
+      evt_transfer_b: [
+        (e) =>
+          `Un club richissime offre ${fmt(e.price)} pour ${e.name} (note ${e.r}), ton meilleur joueur. Acceptes-tu de le vendre ?`,
+        (e) =>
+          `Un club richissime offre ${fmt(e.price)} pour ${e.name} (note ${e.r}), ta meilleure joueuse. Acceptes-tu de la vendre ?`,
+      ],
       careTitle: "Caisse de Care",
       careTier: (n, t) => `Caisse ${n}/${t}`,
       careLock: "Disponible à partir de la 2e ère.",
@@ -398,6 +439,33 @@ function buildDict({ fmt, ord }) {
       coffeeTxt:
         "Buzzer Dynasty is free and ad-free. If you enjoy it, you can buy me a coffee, it's always appreciated!",
       coffeeBtn: "Buy me a coffee",
+      banned: "BANNED FOR LIFE",
+      evtYes: "Accept",
+      evtNo: "Decline",
+      T_sold: (p) => `TRANSFER: +${p}`,
+      L_event: (id) =>
+        ({
+          strike: "Players' strike.",
+          epidemic: "Epidemic: games behind closed doors.",
+          fire: "Massive fires: the training center is destroyed.",
+          bet: "Match-fixing scandal.",
+          transfer: "Transfer offer.",
+        })[id],
+      evt_strike_t: "Players' strike!",
+      evt_strike_b:
+        "The players refuse to play until their contracts are reworked. The next 5 games are lost. They also negotiated higher contracts: signings cost 20% more until the end of the era.",
+      evt_epidemic_t: "Epidemic!",
+      evt_epidemic_b:
+        "Health restrictions force games behind closed doors. The arenas stay empty: your points per second drop to 0 for the whole season. Shots still pay.",
+      evt_fire_t: "Massive fires!",
+      evt_fire_b:
+        "The training center caught fire. The coach, the trainer, the youth academy, the video analyst and the mascot are back to zero: everything has to be rebuilt.",
+      evt_bet_t: "Match-fixing scandal!",
+      evt_bet_b: (e) =>
+        `${e.name} was caught betting against their own club. The league bans them for life.${e.hof ? " Their name stays in the Hall of Fame, but not for the right reasons." : ""}`,
+      evt_transfer_t: "Transfer offer!",
+      evt_transfer_b: (e) =>
+        `A filthy rich club offers ${fmt(e.price)} for ${e.name} (rating ${e.r}), your best player. Do you accept to sell?`,
       careTitle: "Care fund",
       careTier: (n, t) => `Fund ${n}/${t}`,
       careLock: "Available from the 2nd era.",
