@@ -275,6 +275,9 @@
 
   let hofList = false,
     saveVal = "",
+    duelBox = "",
+    duelMine = "",
+    duelRes = null,
     importing = false;
   let S = null,
     tab = "court",
@@ -1230,7 +1233,8 @@
     );
   }
   function renderSeason() {
-    if (document.activeElement && document.activeElement.id === "saveBox") return;
+    const focus = document.activeElement && document.activeElement.id;
+    if (focus === "saveBox" || focus === "duelBox") return;
     if (!S.un.season) {
       setHtml($("#sec-season"), lockPanel("season", T("standings")) + partiePanel());
       return;
@@ -1268,7 +1272,99 @@
         `<p class="hint">${status}</p><div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>${T("th_team")}</th><th>${T("th_w")}</th><th>${T("th_l")}</th><th>${T("th_d")}</th></tr></thead><tbody>${rows}</tbody></table></div>${next ? `<ul class="log">${next}</ul>` : ""}`,
       ) +
         panel(T("journal"), `<ul class="log">${logs}</ul>`) +
+        duelPanel() +
         partiePanel(),
+    );
+  }
+
+  /* ---------- Duel : même match chez les deux joueurs grâce à une seed commune ---------- */
+  const DUEL_VER = 1;
+  function mulberry32(a) {
+    return () => {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function hashStr(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+    return h >>> 0;
+  }
+  function duelMake() {
+    recalc();
+    const top = S.roster
+      .slice()
+      .sort((a, b) => b.r - a.r)
+      .slice(0, 3)
+      .map(nm);
+    const o = { v: DUEL_VER, n: S.name, r: Math.round(C.rating * 10) / 10, p: top };
+    return "BDV:" + btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+  }
+  function duelParse(raw) {
+    const at = raw.lastIndexOf("BDV:");
+    if (at < 0) return null;
+    const code = raw.slice(at).replace(/\s+/g, "");
+    try {
+      const o = JSON.parse(decodeURIComponent(escape(atob(code.slice(4)))));
+      const ok =
+        o.v === DUEL_VER &&
+        typeof o.n === "string" &&
+        o.n.length <= 40 &&
+        typeof o.r === "number" &&
+        o.r >= 0 &&
+        o.r <= 500 &&
+        Array.isArray(o.p) &&
+        o.p.length <= 3 &&
+        o.p.every((x) => typeof x === "string" && x.length <= 40);
+      return ok ? { n: o.n, r: o.r, p: o.p, code } : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  /* Les deux joueurs trient les deux codes dans le même ordre : même seed, même match. */
+  function duelPlay(mine, theirs) {
+    const [A, B] = mine.code <= theirs.code ? [mine, theirs] : [theirs, mine];
+    const rnd01 = mulberry32(hashStr(A.code + "|" + B.code));
+    const p = Math.round((1 / (1 + Math.exp(-(A.r - B.r) / 5))) * 1e6) / 1e6;
+    const aWin = rnd01() < p;
+    let g = -6;
+    for (let k = 0; k < 12; k++) g += rnd01();
+    const base = Math.round(74 + ((A.r + B.r) / 2) * 0.2 + Math.floor(rnd01() * 13) - 5);
+    const win = base + Math.max(1, Math.round(Math.abs(g) * 7) + 1);
+    const split = (tot) => {
+      const w = [0, 0, 0, 0].map(() => 0.6 + rnd01());
+      const s = w.reduce((x, y) => x + y, 0);
+      const q = w.map((x) => Math.round((tot * x) / s));
+      q[3] = tot - q[0] - q[1] - q[2];
+      return q;
+    };
+    const sa = aWin ? win : base,
+      sb = aWin ? base : win;
+    return {
+      rows: [
+        { t: A, s: sa, q: split(sa) },
+        { t: B, s: sb, q: split(sb) },
+      ],
+      me: mine.code,
+    };
+  }
+  function duelPanel() {
+    let res = "";
+    if (duelRes) {
+      const [x, y] = duelRes.rows;
+      const won = (duelRes.me === x.t.code ? x.s > y.s : y.s > x.s) ? "duelWin" : "duelLoss";
+      const row = (r) =>
+        `<tr class="${r.t.code === duelRes.me ? "me" : ""}"><td>${esc(r.t.n)}</td>${r.q.map((v) => `<td>${v}</td>`).join("")}<td><b>${r.s}</b></td></tr>`;
+      res = `<p class="hint"><b>${T(won)}</b> · ${T("duelSame")}</p><div class="scroll"><table class="tbl"><thead><tr><th>${T("th_team")}</th><th>1</th><th>2</th><th>3</th><th>4</th><th>${T("duelTot")}</th></tr></thead><tbody>${row(x)}${row(y)}</tbody></table></div>`;
+    }
+    return panel(
+      T("duelT"),
+      `<div class="card"><p>${T("duelTxt")}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="duelcode">${T("duelCopy")}</button></div>
+      <textarea id="duelBox" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="${esc(T("duelPh"))}" style="width:100%;background:#000;color:var(--white);border:2px solid var(--blue);border-radius:4px;padding:8px;font:13px/1.3 monospace;resize:vertical">${esc(duelBox)}</textarea>
+      <button class="btn pri" data-act="duelgo">${T("duelGo")}</button>${res}</div>`,
     );
   }
   function partiePanel() {
@@ -1710,6 +1806,23 @@
         renderAll();
         break;
       }
+      case "duelcode": {
+        duelMine = duelMake();
+        copyText(duelMine).then((ok) => toast(T(ok ? "sv_copied" : "sv_made")));
+        break;
+      }
+      case "duelgo": {
+        const box = $("#duelBox");
+        duelBox = (box && box.value) || duelBox;
+        const theirs = duelParse(duelBox);
+        if (!theirs) {
+          toast(T("duelBad"));
+          return;
+        }
+        duelRes = duelPlay(duelParse(duelMake()), theirs);
+        renderSeason();
+        break;
+      }
       case "export": {
         save();
         const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
@@ -1827,6 +1940,7 @@
   });
   document.addEventListener("input", (e) => {
     if (e.target.id === "saveBox") saveVal = e.target.value;
+    if (e.target.id === "duelBox") duelBox = e.target.value;
   });
   $("#teamName").addEventListener("input", (e) => {
     S.name = e.target.value.trim() || (S.fem ? DEF_F : DEF_M);
