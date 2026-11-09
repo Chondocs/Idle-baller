@@ -237,6 +237,22 @@ function buildDict({ fmt, ord }) {
         (e) =>
           `${e.name} traverse une période difficile : sa note passe de ${e.r} à ${e.to}. Du repos et un suivi l'aideront à remonter plus vite (+8 par saison, contre +3 sinon). Si toi ou un proche traversez une période difficile, en parler à un professionnel peut aider. En France, le 3114 est joignable gratuitement, 24 h/24.`,
       ],
+      warYes: "Soutenir le gouvernement",
+      warNo: "Condamner le gouvernement",
+      warLeft: (side, n) =>
+        `Position publique : ${side === "gov" ? "soutien au gouvernement (sponsors ×1,1)" : "condamnation (sponsors ×0,75, Fan club ×2)"} · ${n} saison${n > 1 ? "s" : ""} restante${n > 1 ? "s" : ""}.`,
+      L_war: (side) =>
+        side === "gov"
+          ? "Tu soutiens le gouvernement en guerre."
+          : "Tu condamnes le gouvernement en guerre.",
+      evt_war_t: "Une guerre éclate !",
+      evt_war_b:
+        "Ton pays est entré en guerre : son gouvernement attaque un pays voisin pour mettre la main sur ses réserves naturelles. Les civils en paient déjà le prix. Condamner le gouvernement te fera perdre des sponsors (revenus ×0,75), mais les supporters te respecteront (Fan club ×2). Le soutenir rassurera les sponsors (revenus ×1,1). Dans les deux cas, pour 3 saisons.",
+      evt_warmsg_t: "Ta prise de position",
+      evt_warmsg_b: (e) =>
+        e.side === "gov"
+          ? "Tu soutiens le gouvernement : les sponsors apprécient (revenus ×1,1 pendant 3 saisons). N'oublie pas que, chaque année, de nombreux peuples subissent la guerre. Sans forcément soutenir quoi que ce soit, tu peux au moins t'informer, par exemple auprès de Médecins Sans Frontières, d'Amnesty International ou de la Ligue des droits de l'Homme (LDH)."
+          : "Tu condamnes le gouvernement : des sponsors se retirent (revenus ×0,75 pendant 3 saisons), mais les supporters te respectent (Fan club ×2). Quand des populations sont massacrées pour leurs ressources naturelles, le soutien des habitants des pays riches compte : s'informer, relayer, ne pas détourner le regard.",
       evtYes: "Accepter",
       evtNo: "Refuser",
       T_sold: (p) => `TRANSFERT : +${p}`,
@@ -248,6 +264,7 @@ function buildDict({ fmt, ord }) {
           bet: "Affaire de paris truqués.",
           reval: "Un joueur exige une revalorisation.",
           mental: "Un joueur traverse une période difficile.",
+          war: "Une guerre éclate.",
           transfer: "Offre de transfert.",
         })[id],
       evt_strike_t: "Grève des joueurs !",
@@ -523,6 +540,20 @@ function buildDict({ fmt, ord }) {
       evt_mental_t: "A hard time",
       evt_mental_b: (e) =>
         `${e.name} is going through a hard time: their rating drops from ${e.r} to ${e.to}. Rest and follow-up will help them recover faster (+8 per season, instead of +3). If you or someone close to you is struggling, talking to a professional can help.`,
+      warYes: "Back the government",
+      warNo: "Condemn the government",
+      warLeft: (side, n) =>
+        `Public stance: ${side === "gov" ? "backing the government (sponsors ×1.1)" : "condemnation (sponsors ×0.75, Fan club ×2)"} · ${n} season${n > 1 ? "s" : ""} left.`,
+      L_war: (side) =>
+        side === "gov" ? "You back the government at war." : "You condemn the government at war.",
+      evt_war_t: "A war breaks out!",
+      evt_war_b:
+        "Your country has gone to war: its government is attacking a neighbouring country to seize its natural resources. Civilians are already paying the price. Condemning the government will cost you sponsors (income ×0.75), but fans will respect you (Fan club ×2). Backing it will reassure sponsors (income ×1.1). Either way, for 3 seasons.",
+      evt_warmsg_t: "Your stance",
+      evt_warmsg_b: (e) =>
+        e.side === "gov"
+          ? "You back the government: sponsors are pleased (income ×1.1 for 3 seasons). Remember that every year many peoples suffer from war. Without having to support anything, you can at least get informed, for example through Doctors Without Borders, Amnesty International or the Human Rights League (LDH)."
+          : "You condemn the government: some sponsors leave (income ×0.75 for 3 seasons), but fans respect you (Fan club ×2). When populations are massacred for their natural resources, the support of people in rich countries matters: get informed, spread the word, do not look away.",
       evtYes: "Accept",
       evtNo: "Decline",
       T_sold: (p) => `TRANSFER: +${p}`,
@@ -534,6 +565,7 @@ function buildDict({ fmt, ord }) {
           bet: "Match-fixing scandal.",
           reval: "A player demands a rerating.",
           mental: "A player is going through a hard time.",
+          war: "A war breaks out.",
           transfer: "Transfer offer.",
         })[id],
       evt_strike_t: "Players' strike!",

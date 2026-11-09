@@ -390,6 +390,10 @@
   const careFrac = () => S.careTier + (careDone() ? 0 : S.care / CARE_CAPS[S.careTier]);
   const eraBonus = () => 0.5 * (S.era - 1) * (1 + careFrac());
   const eraMult = () => 1 + eraBonus();
+  /* Guerre : position prise pendant 3 saisons (sponsors et supporters). */
+  const WAR_SEASONS = 3;
+  const warMult = () => (S.war ? (S.war.side === "against" ? 0.75 : 1.1) : 1);
+  const fanBonus = () => 0.25 * S.upg.fans * (S.war && S.war.side === "against" ? 2 : 1);
   const mult = () => (1 + 0.12 * S.upg.coach) * titleMult() * legacy() * eraMult();
   const flat = () => BASE_PPS + (S.upg.arena ? DIFF * 3 * Math.pow(S.upg.arena, 1.25) : 0);
   function recalc() {
@@ -399,7 +403,7 @@
       b += pp(p.r);
       sum += p.r;
     });
-    C.pps = S.epidemic ? 0 : (b + flat()) * mult(); // huis clos : plus de revenus passifs
+    C.pps = S.epidemic ? 0 : (b + flat()) * mult() * warMult(); // huis clos : plus de revenus passifs
     C.click =
       DIFF *
       (1 + 1.5 * S.upg.shoot + 0.06 * C.pps) *
@@ -536,7 +540,7 @@
       win: r.aWin,
     };
     log("L_game", [se.game, r.aWin, r.a, r.b, se.teams[opp].name], r.aWin ? "good" : "bad");
-    gain(C.pps * (r.aWin ? 40 * (1 + 0.25 * S.upg.fans) : 12));
+    gain(C.pps * (r.aWin ? 40 * (1 + fanBonus()) : 12));
     if (se.game >= G) startPlayoffs();
   }
   function startPlayoffs() {
@@ -578,7 +582,7 @@
       if (r.aWin) {
         po.round = 1;
         po.final = [0, ow];
-        gain(C.pps * 90 * (1 + 0.25 * S.upg.fans));
+        gain(C.pps * 90 * (1 + fanBonus()));
         log("L_semiW", [r.a, r.b], "good");
       } else {
         log("L_semiL", [r.a, r.b], "bad");
@@ -637,6 +641,7 @@
   function offseason() {
     const retired = [];
     S.epidemic = false; // l'épidémie ne dure qu'une saison
+    if (S.war && --S.war.left <= 0) S.war = null;
     S.roster.forEach((p) => {
       p.age++;
       p.seasons++;
@@ -808,6 +813,7 @@
     S.epidemic = false;
     S.event = null;
     S.evtQ = [];
+    S.war = null;
     S.revTok = 0;
     S.revCnt = 0;
     S.eraTitles = 0;
@@ -847,6 +853,7 @@
       evtCool: 0,
       event: null,
       evtQ: [],
+      war: null,
       revTok: 0,
       revCnt: 0,
       seasonN: 1,
@@ -912,6 +919,7 @@
           o.evtCool = o.evtCool || 0;
           o.event = o.event || null;
           o.evtQ = Array.isArray(o.evtQ) ? o.evtQ : o.evtQ ? [o.evtQ] : [];
+          o.war = o.war || null;
           o.revTok = o.revTok || 0;
           o.revCnt = o.revCnt || 0;
           o.care = o.care || 0;
@@ -973,6 +981,12 @@
         S.epidemic = true;
         return {};
       },
+    },
+    {
+      id: "war",
+      w: 10,
+      ok: () => !S.war,
+      make: () => ({}),
     },
     {
       id: "fire",
@@ -1095,13 +1109,15 @@
     $("#evtT").textContent = T("evt_" + e.t + "_t");
     $("#evtB").textContent = T("evt_" + e.t + "_b", e);
     $("#evtBtns").innerHTML =
-      e.t === "mental"
-        ? `<button class="btn pri big" data-act="evtyes" data-cost="${e.price}" data-block="0">${T("evtMentCare", fmt(e.price))}</button><button class="btn big" data-act="evtno">${T("evtMentSkip")}</button>`
-        : e.t === "reval"
-          ? `<button class="btn pri big" data-act="evtyes" data-cost="${e.price}" data-block="0">${T("evtReval", fmt(e.price))}</button><button class="btn big" data-act="evtno">${T("evtLeave")}</button>`
-          : e.t === "transfer"
-            ? `<button class="btn pri big" data-act="evtyes">${T("evtYes")}</button><button class="btn big" data-act="evtno">${T("evtNo")}</button>`
-            : `<button class="btn pri big" data-act="evtok">${T("popOk")}</button>`;
+      e.t === "war"
+        ? `<button class="btn pri big" data-act="evtyes">${T("warYes")}</button><button class="btn big" data-act="evtno">${T("warNo")}</button>`
+        : e.t === "mental"
+          ? `<button class="btn pri big" data-act="evtyes" data-cost="${e.price}" data-block="0">${T("evtMentCare", fmt(e.price))}</button><button class="btn big" data-act="evtno">${T("evtMentSkip")}</button>`
+          : e.t === "reval"
+            ? `<button class="btn pri big" data-act="evtyes" data-cost="${e.price}" data-block="0">${T("evtReval", fmt(e.price))}</button><button class="btn big" data-act="evtno">${T("evtLeave")}</button>`
+            : e.t === "transfer"
+              ? `<button class="btn pri big" data-act="evtyes">${T("evtYes")}</button><button class="btn big" data-act="evtno">${T("evtNo")}</button>`
+              : `<button class="btn pri big" data-act="evtok">${T("popOk")}</button>`;
     $("#evt").hidden = false;
     setHdr();
   }
@@ -1115,6 +1131,12 @@
         gain(e.price);
         toast(T("T_sold", fmt(e.price).toUpperCase()));
       }
+    }
+    if (e && e.t === "war") {
+      const side = sell ? "gov" : "against";
+      S.war = { side, left: WAR_SEASONS };
+      S.evtQ.unshift({ t: "warmsg", side });
+      log("L_war", [side]);
     }
     if (e && e.t === "mental") {
       const p = S.roster.find((x) => x.id === e.pid);
@@ -1339,16 +1361,17 @@
       $("#sec-club"),
       panel(
         T("facilities"),
-        `<div class="list">${UPG.map((u) => {
-          const l = S.upg[u.id],
-            c = upCost(u),
-            maxed = u.max && l >= u.max;
-          const lk = !S.un.season && (u.id === "scout" || u.id === "fans");
-          if (lk)
-            return `<article class="up lk" data-lk="${T("lkSeason")}"><div><strong>${T("u_" + u.id)}</strong><span class="lvl">${T("lvl", 0)}</span><p>${T("d_" + u.id, 0)}</p></div><button class="btn pri" disabled>${fmt(c)}</button></article>`;
-          return `<article class="up"><div><strong>${T("u_" + u.id)}</strong><span class="lvl">${T("lvl", l)}</span><p>${T("d_" + u.id, l)}</p></div>
+        (S.war ? `<p class="hint">${T("warLeft", S.war.side, S.war.left)}</p>` : "") +
+          `<div class="list">${UPG.map((u) => {
+            const l = S.upg[u.id],
+              c = upCost(u),
+              maxed = u.max && l >= u.max;
+            const lk = !S.un.season && (u.id === "scout" || u.id === "fans");
+            if (lk)
+              return `<article class="up lk" data-lk="${T("lkSeason")}"><div><strong>${T("u_" + u.id)}</strong><span class="lvl">${T("lvl", 0)}</span><p>${T("d_" + u.id, 0)}</p></div><button class="btn pri" disabled>${fmt(c)}</button></article>`;
+            return `<article class="up"><div><strong>${T("u_" + u.id)}</strong><span class="lvl">${T("lvl", l)}</span><p>${T("d_" + u.id, l)}</p></div>
       <button class="btn pri" data-act="buy" data-u="${u.id}" data-cost="${c}" data-block="${maxed ? 1 : 0}">${maxed ? T("max") : fmt(c)}</button></article>`;
-        }).join("")}</div>`,
+          }).join("")}</div>`,
       ) + carePanel(),
     );
   }
