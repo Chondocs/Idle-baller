@@ -221,6 +221,22 @@ function buildDict({ fmt, ord }) {
         (e) =>
           `${e.name} (note ${e.r}) estime valoir plus et exige une revalorisation à ${fmt(e.price)}. Sinon, elle part ailleurs.`,
       ],
+      slumpTag: "En difficulté",
+      evtMentCare: (c) => `ACCOMPAGNER · ${c}`,
+      evtMentSkip: "Laisser faire",
+      relWarnT: "Libérer ?",
+      relWarnB:
+        "Se séparer de quelqu'un en pleine période difficile peut aggraver sévèrement son état.",
+      relCancel: "Annuler",
+      relForce: "Libérer quand même",
+      L_better: (n) => `${n} va mieux.`,
+      evt_mental_t: "Période difficile",
+      evt_mental_b: [
+        (e) =>
+          `${e.name} traverse une période difficile : sa note passe de ${e.r} à ${e.to}. Du repos et un suivi l'aideront à remonter plus vite (+8 par saison, contre +3 sinon). Si toi ou un proche traversez une période difficile, en parler à un professionnel peut aider. En France, le 3114 est joignable gratuitement, 24 h/24.`,
+        (e) =>
+          `${e.name} traverse une période difficile : sa note passe de ${e.r} à ${e.to}. Du repos et un suivi l'aideront à remonter plus vite (+8 par saison, contre +3 sinon). Si toi ou un proche traversez une période difficile, en parler à un professionnel peut aider. En France, le 3114 est joignable gratuitement, 24 h/24.`,
+      ],
       evtYes: "Accepter",
       evtNo: "Refuser",
       T_sold: (p) => `TRANSFERT : +${p}`,
@@ -231,6 +247,7 @@ function buildDict({ fmt, ord }) {
           fire: "Incendies massifs : le centre est détruit.",
           bet: "Affaire de paris truqués.",
           reval: "Un joueur exige une revalorisation.",
+          mental: "Un joueur traverse une période difficile.",
           transfer: "Offre de transfert.",
         })[id],
       evt_strike_t: "Grève des joueurs !",
@@ -494,6 +511,18 @@ function buildDict({ fmt, ord }) {
       evt_reval_t: "Rerating request!",
       evt_reval_b: (e) =>
         `${e.name} (rating ${e.r}) thinks they are worth more and demands a rerating for ${fmt(e.price)}. Otherwise they leave.`,
+      slumpTag: "Struggling",
+      evtMentCare: (c) => `SUPPORT · ${c}`,
+      evtMentSkip: "Do nothing",
+      relWarnT: "Release?",
+      relWarnB:
+        "Letting someone go in the middle of a hard time can severely worsen their condition.",
+      relCancel: "Cancel",
+      relForce: "Release anyway",
+      L_better: (n) => `${n} is doing better.`,
+      evt_mental_t: "A hard time",
+      evt_mental_b: (e) =>
+        `${e.name} is going through a hard time: their rating drops from ${e.r} to ${e.to}. Rest and follow-up will help them recover faster (+8 per season, instead of +3). If you or someone close to you is struggling, talking to a professional can help.`,
       evtYes: "Accept",
       evtNo: "Decline",
       T_sold: (p) => `TRANSFER: +${p}`,
@@ -504,6 +533,7 @@ function buildDict({ fmt, ord }) {
           fire: "Massive fires: the training center is destroyed.",
           bet: "Match-fixing scandal.",
           reval: "A player demands a rerating.",
+          mental: "A player is going through a hard time.",
           transfer: "Transfer offer.",
         })[id],
       evt_strike_t: "Players' strike!",

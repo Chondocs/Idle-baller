@@ -640,7 +640,8 @@
     S.roster.forEach((p) => {
       p.age++;
       p.seasons++;
-      progress(p);
+      if (p.sl) recover(p);
+      else progress(p);
     });
     S.roster = S.roster.filter((p) => {
       const r =
@@ -662,6 +663,7 @@
     log("L_draft", [S.seasonN]);
     rollEvent();
     rollReval();
+    rollMental();
   }
   /* Entrée au Hall of Fame dès que les critères sont remplis, sans attendre la retraite. */
   /** Met à jour la fiche Hall of Fame d'un joueur avec ses statistiques actuelles. */
@@ -805,7 +807,7 @@
     S.strikes = 0;
     S.epidemic = false;
     S.event = null;
-    S.evtQ = null;
+    S.evtQ = [];
     S.revTok = 0;
     S.revCnt = 0;
     S.eraTitles = 0;
@@ -844,7 +846,7 @@
       epidemic: false,
       evtCool: 0,
       event: null,
-      evtQ: null,
+      evtQ: [],
       revTok: 0,
       revCnt: 0,
       seasonN: 1,
@@ -909,7 +911,7 @@
           o.epidemic = !!o.epidemic;
           o.evtCool = o.evtCool || 0;
           o.event = o.event || null;
-          o.evtQ = o.evtQ || null;
+          o.evtQ = Array.isArray(o.evtQ) ? o.evtQ : o.evtQ ? [o.evtQ] : [];
           o.revTok = o.revTok || 0;
           o.revCnt = o.revCnt || 0;
           o.care = o.care || 0;
@@ -1036,10 +1038,40 @@
       price: REVAL_EVENT_COST * signCost(p),
     };
     log("L_event", ["reval"], "bad");
-    if (S.event) S.evtQ = ev;
+    pushEvent(ev);
+  }
+  /** Affiche l'événement tout de suite, ou le met en file s'il y en a déjà un à l'écran. */
+  function pushEvent(ev) {
+    if (S.event) S.evtQ.push(ev);
     else {
       S.event = ev;
       showEvent();
+    }
+  }
+  /** Santé mentale : un joueur traverse une période difficile (-15), il remonte ensuite saison après saison. */
+  const MENTAL_CHANCE = 0.1;
+  const MENTAL_DROP = 15;
+  const MENTAL_CARE_COST = 3; // x le coût de recrutement
+  function rollMental() {
+    if (!S.un.season || S.roster.length < 3 || S.roster.some((p) => p.sl)) return;
+    if (Math.random() >= MENTAL_CHANCE) return;
+    const pool = S.roster.filter((p) => p.r >= 20);
+    if (!pool.length) return;
+    const p = pick(pool);
+    const price = MENTAL_CARE_COST * signCost(p);
+    const from = p.r;
+    p.r = Math.max(5, p.r - MENTAL_DROP);
+    p.sl = { to: from, care: false };
+    log("L_event", ["mental"], "bad");
+    recalc();
+    pushEvent({ t: "mental", pid: p.id, name: nm(p), r: from, to: p.r, price });
+  }
+  /** Récupération en fin de saison : +8 avec accompagnement, +3 sans. */
+  function recover(p) {
+    p.r = Math.min(p.sl.to, p.r + (p.sl.care ? 8 : 3));
+    if (p.r >= p.sl.to) {
+      delete p.sl;
+      log("L_better", [nm(p)], "good");
     }
   }
   /** Tire au sort un événement en fin de saison (au plus un tous les deux ans, jamais en début d'ère). */
@@ -1063,11 +1095,13 @@
     $("#evtT").textContent = T("evt_" + e.t + "_t");
     $("#evtB").textContent = T("evt_" + e.t + "_b", e);
     $("#evtBtns").innerHTML =
-      e.t === "reval"
-        ? `<button class="btn pri big" data-act="evtyes" data-cost="${e.price}" data-block="0">${T("evtReval", fmt(e.price))}</button><button class="btn big" data-act="evtno">${T("evtLeave")}</button>`
-        : e.t === "transfer"
-          ? `<button class="btn pri big" data-act="evtyes">${T("evtYes")}</button><button class="btn big" data-act="evtno">${T("evtNo")}</button>`
-          : `<button class="btn pri big" data-act="evtok">${T("popOk")}</button>`;
+      e.t === "mental"
+        ? `<button class="btn pri big" data-act="evtyes" data-cost="${e.price}" data-block="0">${T("evtMentCare", fmt(e.price))}</button><button class="btn big" data-act="evtno">${T("evtMentSkip")}</button>`
+        : e.t === "reval"
+          ? `<button class="btn pri big" data-act="evtyes" data-cost="${e.price}" data-block="0">${T("evtReval", fmt(e.price))}</button><button class="btn big" data-act="evtno">${T("evtLeave")}</button>`
+          : e.t === "transfer"
+            ? `<button class="btn pri big" data-act="evtyes">${T("evtYes")}</button><button class="btn big" data-act="evtno">${T("evtNo")}</button>`
+            : `<button class="btn pri big" data-act="evtok">${T("popOk")}</button>`;
     $("#evt").hidden = false;
     setHdr();
   }
@@ -1082,6 +1116,13 @@
         toast(T("T_sold", fmt(e.price).toUpperCase()));
       }
     }
+    if (e && e.t === "mental") {
+      const p = S.roster.find((x) => x.id === e.pid);
+      if (p && p.sl && sell && S.pts >= e.price) {
+        S.pts -= e.price;
+        p.sl.care = true;
+      }
+    }
     if (e && e.t === "reval") {
       const p = S.roster.find((x) => x.id === e.pid);
       if (p && sell && S.pts >= e.price) {
@@ -1094,8 +1135,7 @@
         toast(T("T_left", nm(p)));
       }
     }
-    S.event = S.evtQ;
-    S.evtQ = null;
+    S.event = S.evtQ.shift() || null;
     $("#evt").hidden = !S.event;
     if (S.event) showEvent();
     recalc();
@@ -1200,6 +1240,7 @@
     const prod = pp(p.r) * mult();
     const tags =
       (p.son ? `<span class="tag">${T("sonOf")} ${esc(p.son.toUpperCase())}</span>` : "") +
+      (p.sl ? `<span class="tag">${T("slumpTag")}</span>` : "") +
       (p.hof ? '<span class="tag">HOF</span>' : "") +
       (p.rings
         ? `<span class="tag"><span class="tx">${T("ringsTag", p.rings)}</span><span class="ts">★${p.rings}</span></span>`
@@ -1843,6 +1884,15 @@
           return;
         }
         const p = S.roster.find((x) => x.id === id);
+        if (p && p.sl && el.dataset.force !== "1") {
+          $("#evtT").textContent = T("relWarnT");
+          $("#evtB").textContent = T("relWarnB");
+          $("#evtBtns").innerHTML =
+            `<button class="btn pri big" data-act="relcancel">${T("relCancel")}</button><button class="btn big" data-act="release" data-id="${p.id}" data-force="1">${T("relForce")}</button>`;
+          $("#evt").hidden = false;
+          return;
+        }
+        $("#evt").hidden = !S.event;
         S.roster = S.roster.filter((x) => x.id !== id);
         if (p) {
           syncLegend(p);
@@ -1851,6 +1901,9 @@
         renderAll();
         break;
       }
+      case "relcancel":
+        $("#evt").hidden = !S.event;
+        break;
       case "evtok":
         closeEvent(false);
         break;
