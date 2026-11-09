@@ -1236,7 +1236,7 @@
     const focus = document.activeElement && document.activeElement.id;
     if (focus === "saveBox" || focus === "duelBox") return;
     if (!S.un.season) {
-      setHtml($("#sec-season"), lockPanel("season", T("standings")) + partiePanel());
+      setHtml($("#sec-season"), lockPanel("season", T("standings")) + duelPanel() + partiePanel());
       return;
     }
     const se = S.season,
@@ -1323,48 +1323,50 @@
       return null;
     }
   }
-  /* Les deux joueurs trient les deux codes dans le même ordre : même seed, même match. */
-  function duelPlay(mine, theirs) {
-    const [A, B] = mine.code <= theirs.code ? [mine, theirs] : [theirs, mine];
-    const rnd01 = mulberry32(hashStr(A.code + "|" + B.code));
+  /* Les deux joueurs trient les deux codes dans le même ordre : même seed, mêmes matchs.
+     Série au meilleur des 7 : chaque match a sa propre seed (code A | code B | n° du match). */
+  const DUEL_WINS = 4;
+  function duelGame(A, B, k) {
+    const rnd01 = mulberry32(hashStr(A.code + "|" + B.code + "|" + k));
     const p = Math.round((1 / (1 + Math.exp(-(A.r - B.r) / 5))) * 1e6) / 1e6;
     const aWin = rnd01() < p;
     let g = -6;
-    for (let k = 0; k < 12; k++) g += rnd01();
+    for (let n = 0; n < 12; n++) g += rnd01();
     const base = Math.round(74 + ((A.r + B.r) / 2) * 0.2 + Math.floor(rnd01() * 13) - 5);
     const win = base + Math.max(1, Math.round(Math.abs(g) * 7) + 1);
-    const split = (tot) => {
-      const w = [0, 0, 0, 0].map(() => 0.6 + rnd01());
-      const s = w.reduce((x, y) => x + y, 0);
-      const q = w.map((x) => Math.round((tot * x) / s));
-      q[3] = tot - q[0] - q[1] - q[2];
-      return q;
-    };
-    const sa = aWin ? win : base,
-      sb = aWin ? base : win;
-    return {
-      rows: [
-        { t: A, s: sa, q: split(sa) },
-        { t: B, s: sb, q: split(sb) },
-      ],
-      me: mine.code,
-    };
+    return aWin ? { a: win, b: base } : { a: base, b: win };
+  }
+  function duelPlay(mine, theirs) {
+    const [A, B] = mine.code <= theirs.code ? [mine, theirs] : [theirs, mine];
+    const games = [];
+    let wa = 0,
+      wb = 0;
+    while (wa < DUEL_WINS && wb < DUEL_WINS) {
+      const r = duelGame(A, B, games.length + 1);
+      games.push(r);
+      if (r.a > r.b) wa++;
+      else wb++;
+    }
+    return { A, B, games, wa, wb, me: mine.code };
+  }
+  function duelResult(d) {
+    const meA = d.me === d.A.code,
+      won = meA ? d.wa > d.wb : d.wb > d.wa;
+    const rows = d.games
+      .map(
+        (g, i) =>
+          `<tr><td>${i + 1}</td><td${g.a > g.b ? ' class="me"' : ""}>${g.a}</td><td${g.b > g.a ? ' class="me"' : ""}>${g.b}</td></tr>`,
+      )
+      .join("");
+    return `<p class="hint"><b>${T(won ? "duelWin" : "duelLoss")}</b> ${d.wa} - ${d.wb} · ${T("duelSame")}</p><div class="scroll"><table class="tbl"><thead><tr><th>${T("duelGameN")}</th><th>${esc(d.A.n)}</th><th>${esc(d.B.n)}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   function duelPanel() {
-    let res = "";
-    if (duelRes) {
-      const [x, y] = duelRes.rows;
-      const won = (duelRes.me === x.t.code ? x.s > y.s : y.s > x.s) ? "duelWin" : "duelLoss";
-      const row = (r) =>
-        `<tr class="${r.t.code === duelRes.me ? "me" : ""}"><td>${esc(r.t.n)}</td>${r.q.map((v) => `<td>${v}</td>`).join("")}<td><b>${r.s}</b></td></tr>`;
-      res = `<p class="hint"><b>${T(won)}</b> · ${T("duelSame")}</p><div class="scroll"><table class="tbl"><thead><tr><th>${T("th_team")}</th><th>1</th><th>2</th><th>3</th><th>4</th><th>${T("duelTot")}</th></tr></thead><tbody>${row(x)}${row(y)}</tbody></table></div>`;
-    }
     return panel(
       T("duelT"),
       `<div class="card"><p>${T("duelTxt")}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="duelcode">${T("duelCopy")}</button></div>
       <textarea id="duelBox" rows="3" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="${esc(T("duelPh"))}" style="width:100%;background:#000;color:var(--white);border:2px solid var(--blue);border-radius:4px;padding:8px;font:13px/1.3 monospace;resize:vertical">${esc(duelBox)}</textarea>
-      <button class="btn pri" data-act="duelgo">${T("duelGo")}</button>${res}</div>`,
+      <button class="btn pri" data-act="duelgo">${T("duelGo")}</button>${duelRes ? duelResult(duelRes) : ""}</div>`,
     );
   }
   function partiePanel() {
