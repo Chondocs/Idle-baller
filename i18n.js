@@ -206,7 +206,8 @@ function buildDict({ fmt, ord }) {
       u_reval: "Revalorisation",
       d_reval: (l) =>
         `+1 revalorisation par niveau, à utiliser quand tu veux dans l'Effectif : +1 de note et de potentiel pour un joueur au plafond. Niveau ${l}.`,
-      revLeft: (n) => `Revalorisations disponibles : ${n}`,
+      revLeft: (n) => `Revalorisations disponibles : ${n} (1 par joueur et par saison)`,
+      revDone: "DÉJÀ REVALORISÉ CETTE SAISON",
       revalBtn: (c) => `REVALORISER ${c}`,
       revTip: (n) => `Revalorisé ${n} fois`,
       evtReval: (c) => `REVALORISER · ${c}`,
@@ -482,7 +483,8 @@ function buildDict({ fmt, ord }) {
       u_reval: "Rerating",
       d_reval: (l) =>
         `+1 rerating per level, to use any time in the Roster: +1 rating and potential for a player at their cap. Level ${l}.`,
-      revLeft: (n) => `Rerates available: ${n}`,
+      revLeft: (n) => `Rerates available: ${n} (1 per player per season)`,
+      revDone: "ALREADY RERATED THIS SEASON",
       revalBtn: (c) => `RERATE ${c}`,
       revTip: (n) => `Rerated ${n} time(s)`,
       evtReval: (c) => `RERATE · ${c}`,

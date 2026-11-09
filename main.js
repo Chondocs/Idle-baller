@@ -371,6 +371,7 @@
   const REVAL_AI_STEP = 10; // +1 de niveau adverse toutes les 10 revalorisations
   const revCap = (p) => (p.egg ? REVAL_CAP_EGG : REVAL_CAP);
   const canReval = (p) => p.r >= p.pot && p.r < revCap(p);
+  const revDoneNow = (p) => p.rvS === S.seasonN; // déjà revalorisé par toi cette saison
   const revCost = (p) => REVAL_COST * signCost(p);
   const rerollCost = () => Math.round(0.9 * Math.max(20, C.pps * 15) * (1 + S.rerolls * 0.5));
 
@@ -1210,9 +1211,11 @@
     } else
       act = `<button class="btn ghost" data-act="release" data-id="${p.id}">${T("release")}</button>`;
     const rv =
-      mode !== "prospect" && S.revTok > 0 && canReval(p)
-        ? `<button class="btn pri sm" data-act="reval" data-id="${p.id}" data-cost="${revCost(p)}" data-block="0">${T("revalBtn", fmt(revCost(p)))}</button>`
-        : "";
+      mode !== "prospect" && S.revTok > 0 && canReval(p) && revDoneNow(p)
+        ? `<button class="btn sm" disabled>${T("revDone")}</button>`
+        : mode !== "prospect" && S.revTok > 0 && canReval(p)
+          ? `<button class="btn pri sm" data-act="reval" data-id="${p.id}" data-cost="${revCost(p)}" data-block="0">${T("revalBtn", fmt(revCost(p)))}</button>`
+          : "";
     return `<article class="pl${p.rings ? " has-rings" : ""}">${avatar(p)}
     <div class="pl-id"><strong>${esc(nm(p))}${p.rv ? `<span class="rvstar" title="${T("revTip", p.rv)}">★</span>` : ""}${tags}</strong><small>${T("age", p.age)} · ${T("pot")} ${p.pot}</small><em>+${fmt(prod)}/s${mode === "prospect" ? "" : '<span class="mq"> · ' + fmt(p.pts || 0) + " " + T("scored") + "</span>"}</em>${rv}</div>
     <div class="pl-r"><span class="rt ${tier(p.r)}">${p.r}</span>${act}</div></article>`;
@@ -1887,7 +1890,7 @@
       }
       case "reval": {
         const p = S.roster.find((x) => x.id === el.dataset.id);
-        if (!p || !canReval(p) || S.revTok < 1) return;
+        if (!p || !canReval(p) || revDoneNow(p) || S.revTok < 1) return;
         const c = revCost(p);
         if (S.pts < c) return;
         S.pts -= c;
