@@ -947,7 +947,8 @@
   }
 
   /* ========== Événements aléatoires ========== */
-  const EVENT_CHANCE = 0.19; // tirage à chaque fin de saison
+  const EVENT_CHANCE = 0.17; // part de base répartie entre les événements, à chaque fin de saison
+  const EVENT_BONUS = 0.02; // +2 points de chance pour chaque événement
   const EVENT_CHAIN_CHANCE = 0.01; // chance d'un événement la saison suivant un autre
   const EVENT_MIN_SEASON = 3; // jamais avant la saison 3 d'une ère
   const STRIKE_LOSSES = 5;
@@ -1090,12 +1091,17 @@
   }
   /** Tire au sort un événement en fin de saison (au plus un tous les deux ans, jamais en début d'ère). */
   function rollEvent() {
-    const chance = S.evtCool > 0 ? EVENT_CHAIN_CHANCE : EVENT_CHANCE;
+    const wAll = EVENTS.reduce((t, e) => t + e.w, 0);
+    const pool = EVENTS.filter((e) => !e.ok || e.ok()).map((e) => ({
+      e,
+      p: (e.w / wAll) * EVENT_CHANCE + EVENT_BONUS,
+    }));
+    const total = pool.reduce((t, x) => t + x.p, 0);
+    const chance = S.evtCool > 0 ? EVENT_CHAIN_CHANCE : total;
     if (S.evtCool > 0) S.evtCool--;
     if (!S.un.season || S.eraSeason < EVENT_MIN_SEASON || Math.random() >= chance) return;
-    const pool = EVENTS.filter((e) => !e.ok || e.ok());
-    let x = Math.random() * pool.reduce((t, e) => t + e.w, 0);
-    const ev = pool.find((e) => (x -= e.w) < 0) || pool[0];
+    let x = Math.random() * total;
+    const ev = (pool.find((c) => (x -= c.p) < 0) || pool[0]).e;
     S.evtCool = 1;
     S.event = Object.assign({ t: ev.id }, ev.make());
     log("L_event", [ev.id], "bad");
