@@ -1127,3 +1127,15 @@ a.btn {
     animation: none;
   }
 }
+
+.rvstar {
+  color: var(--yellow, #ffd23f);
+  margin-left: 4px;
+  font-size: 0.85em;
+}
+.pl-id .btn.sm {
+  margin-top: 6px;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+}

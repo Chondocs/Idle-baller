@@ -204,6 +204,7 @@
     { id: "recr", base: 800, g: 2.4, max: 5 },
     { id: "fans", base: 350, g: 1.65, max: 10 },
     { id: "mascot", base: 250, g: 1.6, max: 8 },
+    { id: "reval", base: 2e6, g: 2 },
   ];
   const UPG0 = () => ({
     slots: 0,
@@ -217,6 +218,7 @@
     recr: 0,
     fans: 0,
     mascot: 0,
+    reval: 0,
   });
   const slotsMax = () => Math.min(ROSTER_MAX, 5 + S.upg.slots);
   const hofOpen = () => S.hofUnlocked || S.rings >= HOF_TITLES || S.legends.length > 0;
@@ -360,6 +362,16 @@
     return Math.max(10, Math.round(c));
   }
   const upCost = (u) => Math.round(0.9 * u.base * Math.pow(u.g, S.upg[u.id]));
+  /* Revalorisation : +1 de note (et de potentiel) pour un joueur qui a atteint son potentiel. */
+  const REVAL_COST = 10; // x le coût de recrutement
+  const REVAL_EVENT_COST = 20; // x le coût de recrutement, quand le joueur l'exige
+  const REVAL_CAP = 100;
+  const REVAL_CAP_EGG = 110;
+  const REVAL_EVENT_CHANCE = 0.8; // répartie entre tous les joueurs de l'effectif
+  const REVAL_AI_STEP = 10; // +1 de niveau adverse toutes les 10 revalorisations
+  const revCap = (p) => (p.egg ? REVAL_CAP_EGG : REVAL_CAP);
+  const canReval = (p) => p.r >= p.pot && p.r < revCap(p);
+  const revCost = (p) => REVAL_COST * signCost(p);
   const rerollCost = () => Math.round(0.9 * Math.max(20, C.pps * 15) * (1 + S.rerolls * 0.5));
 
   /* ---------- économie : plus la note est haute, plus il marque ---------- */
@@ -426,7 +438,10 @@
     AI_BOOST_PLAYOFFS = 2,
     AI_BOOST_TITLE = 5,
     AI_BOOST_MAX = 60;
-  const aiLevel = () => Math.min(95, Math.max(AI_BASE + S.aiBoost, 0.92 * C.rating));
+  const aiLevel = () => {
+    const b = Math.floor(S.revCnt / REVAL_AI_STEP);
+    return Math.min(95 + b, Math.max(AI_BASE + S.aiBoost + b, 0.92 * C.rating));
+  };
   const teamR = (i) => (i === 0 ? C.rating : aiLevel() + S.season.teams[i].ovr);
   function simGame(ra, rb, me) {
     let p = 1 / (1 + Math.exp(-(ra - rb) / 5));
@@ -615,7 +630,7 @@
     else d = -rnd(1, 3);
     if (d < 0 && Math.random() < t * 0.06) d = 0;
     if (d > 0) d = Math.min(d, Math.max(0, p.pot - p.r)); // jamais au-dessus du potentiel
-    p.r = clamp(p.r + d, 5, 99);
+    p.r = clamp(p.r + d, 5, Math.max(99, revCap(p)));
     p.peak = Math.max(p.peak, p.r);
   }
   function offseason() {
@@ -645,6 +660,7 @@
     S.last = null;
     log("L_draft", [S.seasonN]);
     rollEvent();
+    rollReval();
   }
   /* Entrée au Hall of Fame dès que les critères sont remplis, sans attendre la retraite. */
   /** Met à jour la fiche Hall of Fame d'un joueur avec ses statistiques actuelles. */
@@ -788,6 +804,9 @@
     S.strikes = 0;
     S.epidemic = false;
     S.event = null;
+    S.evtQ = null;
+    S.revTok = 0;
+    S.revCnt = 0;
     S.eraTitles = 0;
     S.rings = 0;
     S.pts = 0;
@@ -824,6 +843,9 @@
       epidemic: false,
       evtCool: 0,
       event: null,
+      evtQ: null,
+      revTok: 0,
+      revCnt: 0,
       seasonN: 1,
       rings: 0,
       eraTitles: 0,
@@ -886,6 +908,9 @@
           o.epidemic = !!o.epidemic;
           o.evtCool = o.evtCool || 0;
           o.event = o.event || null;
+          o.evtQ = o.evtQ || null;
+          o.revTok = o.revTok || 0;
+          o.revCnt = o.revCnt || 0;
           o.care = o.care || 0;
           o.careTier = o.careTier || 0;
           // Anciennes légendes sans ère : celles encore dans l'effectif datent de l'ère en cours
@@ -986,6 +1011,36 @@
     },
   ];
 
+  function revalue(p) {
+    p.r++;
+    p.pot = p.r;
+    p.peak = Math.max(p.peak, p.r);
+    p.rv = (p.rv || 0) + 1;
+    S.revCnt++;
+    syncLegend(p);
+  }
+  /** Fin de saison : un joueur au plafond de son potentiel peut exiger une revalorisation (ou partir). */
+  function rollReval() {
+    if (!S.un.season || S.roster.length < 2) return;
+    const last = S.seasonN - 1; // saison qui vient de se terminer
+    const pool = S.roster.filter((p) => canReval(p) && p.rvS !== last);
+    if (!pool.length || Math.random() >= (REVAL_EVENT_CHANCE * pool.length) / S.roster.length)
+      return;
+    const p = pick(pool);
+    const ev = {
+      t: "reval",
+      pid: p.id,
+      name: nm(p),
+      r: p.r,
+      price: REVAL_EVENT_COST * signCost(p),
+    };
+    log("L_event", ["reval"], "bad");
+    if (S.event) S.evtQ = ev;
+    else {
+      S.event = ev;
+      showEvent();
+    }
+  }
   /** Tire au sort un événement en fin de saison (au plus un tous les deux ans, jamais en début d'ère). */
   function rollEvent() {
     const chance = S.evtCool > 0 ? EVENT_CHAIN_CHANCE : EVENT_CHANCE;
@@ -1007,9 +1062,11 @@
     $("#evtT").textContent = T("evt_" + e.t + "_t");
     $("#evtB").textContent = T("evt_" + e.t + "_b", e);
     $("#evtBtns").innerHTML =
-      e.t === "transfer"
-        ? `<button class="btn pri big" data-act="evtyes">${T("evtYes")}</button><button class="btn big" data-act="evtno">${T("evtNo")}</button>`
-        : `<button class="btn pri big" data-act="evtok">${T("popOk")}</button>`;
+      e.t === "reval"
+        ? `<button class="btn pri big" data-act="evtyes" data-cost="${e.price}" data-block="0">${T("evtReval", fmt(e.price))}</button><button class="btn big" data-act="evtno">${T("evtLeave")}</button>`
+        : e.t === "transfer"
+          ? `<button class="btn pri big" data-act="evtyes">${T("evtYes")}</button><button class="btn big" data-act="evtno">${T("evtNo")}</button>`
+          : `<button class="btn pri big" data-act="evtok">${T("popOk")}</button>`;
     $("#evt").hidden = false;
     setHdr();
   }
@@ -1024,8 +1081,22 @@
         toast(T("T_sold", fmt(e.price).toUpperCase()));
       }
     }
-    S.event = null;
-    $("#evt").hidden = true;
+    if (e && e.t === "reval") {
+      const p = S.roster.find((x) => x.id === e.pid);
+      if (p && sell && S.pts >= e.price) {
+        S.pts -= e.price;
+        revalue(p);
+        toast(T("T_reval", nm(p), p.r));
+      } else if (p) {
+        syncLegend(p);
+        S.roster = S.roster.filter((x) => x.id !== p.id);
+        toast(T("T_left", nm(p)));
+      }
+    }
+    S.event = S.evtQ;
+    S.evtQ = null;
+    $("#evt").hidden = !S.event;
+    if (S.event) showEvent();
     recalc();
     renderAll();
     save();
@@ -1138,8 +1209,12 @@
       act = `<button class="btn pri" data-act="sign" data-i="${i}" data-cost="${c}" data-block="${S.roster.length >= slotsMax() ? 1 : 0}">${T("sign")} ${fmt(c)}</button>`;
     } else
       act = `<button class="btn ghost" data-act="release" data-id="${p.id}">${T("release")}</button>`;
+    const rv =
+      mode !== "prospect" && S.revTok > 0 && canReval(p)
+        ? `<button class="btn pri sm" data-act="reval" data-id="${p.id}" data-cost="${revCost(p)}" data-block="0">${T("revalBtn", fmt(revCost(p)))}</button>`
+        : "";
     return `<article class="pl${p.rings ? " has-rings" : ""}">${avatar(p)}
-    <div class="pl-id"><strong>${esc(nm(p))}${tags}</strong><small>${T("age", p.age)} · ${T("pot")} ${p.pot}</small><em>+${fmt(prod)}/s${mode === "prospect" ? "" : '<span class="mq"> · ' + fmt(p.pts || 0) + " " + T("scored") + "</span>"}</em></div>
+    <div class="pl-id"><strong>${esc(nm(p))}${p.rv ? `<span class="rvstar" title="${T("revTip", p.rv)}">★</span>` : ""}${tags}</strong><small>${T("age", p.age)} · ${T("pot")} ${p.pot}</small><em>+${fmt(prod)}/s${mode === "prospect" ? "" : '<span class="mq"> · ' + fmt(p.pts || 0) + " " + T("scored") + "</span>"}</em>${rv}</div>
     <div class="pl-r"><span class="rt ${tier(p.r)}">${p.r}</span>${act}</div></article>`;
   }
   /* Insère le nouveau contenu avant de retirer l'ancien : la hauteur ne s'effondre jamais, le défilement reste en place. */
@@ -1176,7 +1251,8 @@
       `<div class="rs">` +
         panel(
           `${T("roster")} <small>${list.length}/${slotsMax()}</small>`,
-          `<div class="list">${rows}</div>`,
+          (S.upg.reval > 0 || S.revTok > 0 ? `<p class="hint">${T("revLeft", S.revTok)}</p>` : "") +
+            `<div class="list">${rows}</div>`,
         ) +
         panel(
           T("scouting"),
@@ -1805,6 +1881,20 @@
         if (S.pts < c) return;
         S.pts -= c;
         S.upg[u.id]++;
+        if (u.id === "reval") S.revTok++;
+        renderAll();
+        break;
+      }
+      case "reval": {
+        const p = S.roster.find((x) => x.id === el.dataset.id);
+        if (!p || !canReval(p) || S.revTok < 1) return;
+        const c = revCost(p);
+        if (S.pts < c) return;
+        S.pts -= c;
+        S.revTok--;
+        revalue(p);
+        p.rvS = S.seasonN;
+        toast(T("T_reval", nm(p), p.r));
         renderAll();
         break;
       }
