@@ -367,7 +367,7 @@
   const REVAL_EVENT_COST = 20; // x le coût de recrutement, quand le joueur l'exige
   const REVAL_CAP = 100;
   const REVAL_CAP_EGG = 110;
-  const REVAL_EVENT_CHANCE = 0.8; // répartie entre tous les joueurs de l'effectif
+  const REVAL_EVENT_CHANCE = 0.82; // répartie entre tous les joueurs de l'effectif
   const REVAL_AI_STEP = 10; // +1 de niveau adverse toutes les 10 revalorisations
   const revCap = (p) => (p.egg ? REVAL_CAP_EGG : REVAL_CAP);
   const canReval = (p) => p.r >= p.pot && p.r < revCap(p);
@@ -947,7 +947,7 @@
   }
 
   /* ========== Événements aléatoires ========== */
-  const EVENT_CHANCE = 0.17; // tirage à chaque fin de saison
+  const EVENT_CHANCE = 0.19; // tirage à chaque fin de saison
   const EVENT_CHAIN_CHANCE = 0.01; // chance d'un événement la saison suivant un autre
   const EVENT_MIN_SEASON = 3; // jamais avant la saison 3 d'une ère
   const STRIKE_LOSSES = 5;
@@ -1063,7 +1063,7 @@
     }
   }
   /** Santé mentale : un joueur traverse une période difficile (-15), il remonte ensuite saison après saison. */
-  const MENTAL_CHANCE = 0.1;
+  const MENTAL_CHANCE = 0.12;
   const MENTAL_DROP = 15;
   const MENTAL_CARE_COST = 3; // x le coût de recrutement
   function rollMental() {
